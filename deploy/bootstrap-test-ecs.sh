@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # 在「测试 ECS」上以 root 执行一次：装 Java/nginx、目录、systemd、nginx 配置。
 # 用法（本机有 SSH 密钥后）：
-#   scp deploy/bootstrap-test-ecs.sh deploy/nginx-xby-admin.conf deploy/xby-admin-test.service root@121.40.170.82:/tmp/
-#   ssh root@121.40.170.82 'bash /tmp/bootstrap-test-ecs.sh'
+#   scp deploy/bootstrap-test-ecs.sh deploy/nginx-xby-admin.conf deploy/xby-admin-test.service root@47.99.95.38:/tmp/
+#   ssh root@47.99.95.38 'bash /tmp/bootstrap-test-ecs.sh'
 set -euo pipefail
 
 ECS_DIR="${ECS_DIR:-/opt/xby-admin}"
@@ -83,7 +83,6 @@ if command -v firewall-cmd >/dev/null 2>&1; then
 fi
 
 echo "==> bootstrap 完成。下一步："
-echo "    1) 确认测试 RDS 白名单含本机内网；库 base_admin 已存在"
-echo "    2) 在本机执行生产→测试同步（见 deploy/ENV.md）"
-echo "    3) 本机构建后：ECS_HOST=121.40.170.82 ./deploy/publish-ecs-test.sh"
-echo "    4) systemctl start xby-admin && systemctl status xby-admin"
+echo "    1) 确认本机 MySQL 已有库 base_admin"
+echo "    2) 本机构建后：ECS_HOST=47.99.95.38 ./deploy/publish-ecs-test.sh"
+echo "    3) systemctl start xby-admin && systemctl status xby-admin"

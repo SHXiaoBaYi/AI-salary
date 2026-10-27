@@ -8,7 +8,7 @@ import { CODE_LOGIN_CONFLICT } from '@/api/request';
 import { getInfo, login, loginByDingTalk } from '@/store/slices/userSlice';
 import { message } from '@/store/slices/staticFunctionSlice';
 import type { AppDispatch } from '@/store';
-import loginBg from '@/assets/login-bg.png';
+import loginBg from '@/assets/login-bg.jpg';
 
 const DD_LOGIN_SCRIPT = 'https://g.alicdn.com/dingding/h5-dingtalk-login/0.21.0/ddlogin.js';
 const QR_BOX_ID = 'dingtalk-login-qr';
@@ -270,7 +270,7 @@ export default function Login() {
           >
             <span className='text-2xl font-bold text-white'>小</span>
           </div>
-          <h1 className='text-2xl font-bold tracking-tight text-gray-800'>小巴依(上海)</h1>
+          <h1 className='text-xl font-bold tracking-tight text-gray-800'>小巴依(上海)自动算薪系统</h1>
           <p className='mt-1.5 text-sm text-gray-400'>
             {options?.message || (dingEnabled ? '请使用钉钉扫码登录' : '请使用账号密码登录')}
           </p>

@@ -159,11 +159,11 @@ pnpm dev
 
 | 配置文件               | 说明                                                              |
 | ---------------------- | ----------------------------------------------------------------- |
-| `application.yml`      | 主配置；**默认连测试 RDS**（`rm-bp15f2a3k5b93293k`）               |
-| `application-local.yml`| 本机开发：测试 RDS 外网                                           |
+| `application.yml`      | 主配置；测试与生产都连 ECS `47.99.95.38` 上的 MySQL              |
+| `application-local.yml`| 本机开发：隧道连这台 ECS 上的 MySQL                               |
 | `application-dev.yml`  | 同 local                                                          |
-| `application-test.yml` | 测试 ECS（`121.40.170.82`）：测试 RDS 内网                        |
-| `application-prod.yml` | 生产 ECS（`121.40.119.134`）：生产 RDS 内网，关闭 SQL/Swagger     |
+| `application-test.yml` | 测试 profile：这台 ECS 本机 MySQL                                 |
+| `application-prod.yml` | 生产 profile：同一台 ECS 本机 MySQL，关闭 SQL/Swagger             |
 | `deploy/ENV.md`        | 生产/测试对照、初始化与 `prod→test` 数据同步说明                  |
 
-> 本地与测试默认不连生产库。生产/测试部署与同步详见 [deploy/ENV.md](deploy/ENV.md)。
+> 测试与生产都只连 `47.99.95.38`。部署说明见 [deploy/ENV.md](deploy/ENV.md)。

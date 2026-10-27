@@ -12,10 +12,8 @@ const __dirname = path.dirname(__filename);
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
   const base = env.VITE_BASE || '/';
-  // 本地默认把 /api 代理到「测试」ECS；要测本机后端时设 VITE_API_PROXY_TARGET=http://127.0.0.1:8080
-  // 临时连生产：VITE_API_PROXY_TARGET=http://121.40.119.134/shxby
-  const apiProxyTarget =
-    env.VITE_API_PROXY_TARGET || (mode === 'development' ? 'http://121.40.170.82/shxby' : 'http://127.0.0.1:8080');
+  // 本地开发把 /api 代理到本机后端；要改目标时设 VITE_API_PROXY_TARGET
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8099';
 
   return {
     base,
@@ -28,7 +26,8 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       open: true,
-      port: 3000,
+      port: 8088,
+      strictPort: true,
       hmr: {
         overlay: false,
       },

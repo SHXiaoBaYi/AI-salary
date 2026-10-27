@@ -8,10 +8,8 @@ public class Constants {
     public static final String ADMIN_PERM = "*:*:*";
     /** 测试环境「同步生产数据 / 同步表结构」仅此账号可见可调 */
     public static final String ENV_SYNC_USERNAME = "wangfangyang";
-    /** JDBC URL / host 中出现即视为生产 RDS，本地/测试严禁直连 */
-    public static final String RDS_PROD_INSTANCE_MARKER = "rm-bp18jx12jxs1884h9";
-    /** JDBC URL / host 中出现即视为测试 RDS */
-    public static final String RDS_TEST_INSTANCE_MARKER = "rm-bp15f2a3k5b93293k";
+    /** 项目唯一 ECS。测试与生产都连这台机器上的 MySQL。 */
+    public static final String ECS_HOST = "47.99.95.38";
 
     public static final String MENU_TYPE_DIR = "M";
     public static final String MENU_TYPE_MENU = "C";

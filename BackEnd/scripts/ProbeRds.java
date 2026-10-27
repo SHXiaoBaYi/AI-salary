@@ -9,8 +9,7 @@ public class ProbeRds {
     String user = System.getenv().getOrDefault("RDS_USER", "xiaobayi0099");
     String pass = System.getenv().getOrDefault("RDS_PASS", "Xby@123456");
     String[] hosts = {
-      "prod|" + System.getenv().getOrDefault("PROD_RDS_HOST", "rm-bp18jx12jxs1884h9so.mysql.rds.aliyuncs.com"),
-      "test|" + System.getenv().getOrDefault("TEST_RDS_HOST", "rm-bp15f2a3k5b93293kso.mysql.rds.aliyuncs.com")
+      "ecs|" + System.getenv().getOrDefault("RDS_HOST", "127.0.0.1")
     };
     Class.forName("com.mysql.cj.jdbc.Driver");
     for (String item : hosts) {

@@ -22,11 +22,10 @@ case "$ENV_NAME" in
   *) echo "环境必须是 test 或 prod，收到: $ENV_NAME" >&2; exit 1 ;;
 esac
 
+ECS_HOST="${ECS_HOST:-47.99.95.38}"
 if [[ "$ENV_NAME" == "test" ]]; then
-  ECS_HOST="${ECS_HOST:-121.40.170.82}"
   UNIT_SRC="$ROOT/deploy/xby-admin-test.service"
 else
-  ECS_HOST="${ECS_HOST:-121.40.119.134}"
   UNIT_SRC="$ROOT/deploy/xby-admin.service"
 fi
 
