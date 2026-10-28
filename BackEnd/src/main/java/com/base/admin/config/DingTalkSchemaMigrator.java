@@ -67,6 +67,7 @@ public class DingTalkSchemaMigrator implements ApplicationRunner {
                   user_agent  VARCHAR(512) DEFAULT '' COMMENT 'User-Agent',
                   login_time  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT 'Login time',
                   expire_time DATETIME     NOT NULL COMMENT 'Session expire time',
+                  is_active   TINYINT      NOT NULL DEFAULT 1 COMMENT '1有效 0删除',
                   PRIMARY KEY (user_id),
                   KEY idx_token_id (token_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='User online session'
