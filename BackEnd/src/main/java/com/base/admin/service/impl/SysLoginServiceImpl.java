@@ -39,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -226,24 +227,37 @@ public class SysLoginServiceImpl implements SysLoginService {
                 return byPhone;
             }
         }
-        // 与扫码登录一致：本企业成员免登通过但系统无账号 → 自动注册 hr_user 并绑定钉钉
         return createUserFromDingTalk(identity.toProfile(), identity.userid());
     }
 
+    /**
+     * 扫码登录：只用手机号判断系统用户是否存在。不存在则拒绝，存在则绑定企业用户 ID、unionId、邮箱。
+     */
     private BoundUser resolveSystemUser(DingTalkAuthService.UserProfile profile) {
-        BoundUser byUnion = findByUnionId(profile.unionId());
-        if (byUnion != null) {
-            return byUnion;
+        if (!StringUtils.hasText(profile.mobile())) {
+            throw new BusinessException("钉钉未返回手机号，无法核验是否为本系统用户");
         }
-        String dingUserId = "u_" + profile.unionId();
-        if (StringUtils.hasText(profile.mobile())) {
-            BoundUser byPhone = findByPhone(profile.mobile());
-            if (byPhone != null) {
-                upsertBind(byPhone.userId(), dingUserId, profile.unionId());
-                return byPhone;
-            }
+        List<BoundUser> matches = findUsersByPhone(profile.mobile());
+        if (matches.isEmpty()) {
+            throw new BusinessException("你无权限登录该系统");
         }
-        return createUserFromDingTalk(profile, dingUserId);
+        if (matches.size() > 1) {
+            throw new BusinessException("该手机号对应多个系统账号，请联系管理员");
+        }
+        if (!StringUtils.hasText(profile.corpUserId())) {
+            throw new BusinessException("未能获取钉钉企业用户ID，请确认该账号属于本企业且应用已开通通讯录权限");
+        }
+        if (!StringUtils.hasText(profile.unionId())) {
+            throw new BusinessException("钉钉未返回 unionId，无法完成绑定");
+        }
+        BoundUser user = matches.get(0);
+        String corpUserId = profile.corpUserId().trim();
+        if (corpUserId.length() > 64) {
+            throw new BusinessException("钉钉企业用户ID过长，无法绑定");
+        }
+        upsertBind(user.userId(), corpUserId, profile.unionId().trim());
+        bindEmail(user.userId(), profile.email());
+        return user;
     }
 
     private BoundUser createUserFromDingTalk(DingTalkAuthService.UserProfile profile, String dingUserId) {
@@ -331,11 +345,40 @@ public class SysLoginServiceImpl implements SysLoginService {
     }
 
     private BoundUser findByPhone(String phone) {
-        return jdbc.query("""
-                SELECT user_id, username FROM sys_user
-                WHERE is_active = 1 AND REPLACE(REPLACE(phone, ' ', ''), '-', '') = ?
-                LIMIT 1
-                """, rs -> rs.next() ? new BoundUser(rs.getLong("user_id"), rs.getString("username")) : null, phone);
+        List<BoundUser> matches = findUsersByPhone(phone);
+        return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    private List<BoundUser> findUsersByPhone(String phone) {
+        String target = DingTalkAuthService.normalizeMobile(phone);
+        if (!StringUtils.hasText(target)) {
+            return List.of();
+        }
+        List<BoundUser> matched = new ArrayList<>();
+        jdbc.query("""
+                SELECT user_id, username, phone FROM sys_user
+                WHERE is_active = 1 AND phone IS NOT NULL AND phone <> ''
+                """, rs -> {
+            if (target.equals(DingTalkAuthService.normalizeMobile(rs.getString("phone")))) {
+                matched.add(new BoundUser(rs.getLong("user_id"), rs.getString("username")));
+            }
+        });
+        return matched;
+    }
+
+    private void bindEmail(Long userId, String email) {
+        if (!StringUtils.hasText(email)) {
+            return;
+        }
+        String value = email.trim();
+        if (value.length() > 100) {
+            value = value.substring(0, 100);
+        }
+        SysUser patch = new SysUser();
+        patch.setUserId(userId);
+        patch.setEmail(value);
+        patch.setUpdateBy("dingtalk-login");
+        userMapper.updateById(patch);
     }
 
     private void upsertBind(Long userId, String dingUserId, String unionId) {

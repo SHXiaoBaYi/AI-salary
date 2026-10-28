@@ -15,6 +15,7 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\DingTalkSchemaMigrator.
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\EmptyStringAsNullHandler.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\EnvPublicBaseGuard.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\JacksonConfig.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\LogSchemaMigrator.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\MybatisPlusConfig.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\OpenApiConfig.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\ProdReleaseReady.java

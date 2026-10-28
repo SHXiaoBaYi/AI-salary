@@ -24,6 +24,12 @@ declare global {
   }
 }
 
+/** 只有浏览器地址是 localhost / 127.0.0.1 时开放账号密码，线上只留钉钉扫码。 */
+function isLocalDevHost() {
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+}
+
 function loginRedirectUri() {
   const base = import.meta.env.BASE_URL || '/';
   const joined = `${base.endsWith('/') ? base : `${base}/`}login`;
@@ -56,11 +62,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
   const [options, setOptions] = useState<LoginOptions | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
   const [qrError, setQrError] = useState('');
   const [qrKey, setQrKey] = useState(0);
   const loggingRef = useRef(false);
   const [form] = Form.useForm();
+  const localPassword = isLocalDevHost();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
@@ -106,7 +112,7 @@ export default function Login() {
         await dispatch(loginByDingTalk({ authCode, force, forceTicket })).unwrap();
         await afterToken();
       } catch (err) {
-        const payload = err as { code?: number | string; data?: { forceTicket?: string } };
+        const payload = err as { code?: number | string; message?: string; data?: { forceTicket?: string } };
         const code = Number(payload?.code);
         if (code === CODE_LOGIN_CONFLICT) {
           const ticket = payload?.data?.forceTicket;
@@ -114,6 +120,7 @@ export default function Login() {
           return;
         }
         loggingRef.current = false;
+        setQrError(payload?.message || '登录失败');
         setQrKey((k) => k + 1);
       } finally {
         setLoading(false);
@@ -155,7 +162,7 @@ export default function Login() {
       } catch {
         if (!cancelled) {
           setOptions({
-            passwordLoginEnabled: true,
+            passwordLoginEnabled: false,
             dingTalkEnabled: false,
             message: '无法获取登录配置',
           });
@@ -225,7 +232,6 @@ export default function Login() {
   }, [completeDingLogin, configLoading, loading, options, qrKey]);
 
   const dingEnabled = !!options?.dingTalkEnabled && !!options.clientId;
-  const passwordEnabled = !!options?.passwordLoginEnabled;
 
   return (
     <div
@@ -272,7 +278,7 @@ export default function Login() {
           </div>
           <h1 className='text-xl font-bold tracking-tight text-gray-800'>小巴依(上海)自动算薪系统</h1>
           <p className='mt-1.5 text-sm text-gray-400'>
-            {options?.message || (dingEnabled ? '请使用钉钉扫码登录' : '请使用账号密码登录')}
+            {localPassword ? '本机可使用账号密码或钉钉扫码登录' : '请使用钉钉扫码登录'}
           </p>
         </div>
 
@@ -295,66 +301,58 @@ export default function Login() {
               >
                 刷新二维码
               </Button>
-              <p className='text-center text-xs text-gray-400'>使用企业钉钉扫码；首次扫码将自动注册为普通账号</p>
+              <p className='text-center text-xs text-gray-400'>仅支持已在系统中登记手机号的企业钉钉扫码</p>
             </div>
-          ) : !configLoading && !passwordEnabled ? (
+          ) : !configLoading && !localPassword ? (
             <div className='rounded-lg bg-amber-50 px-4 py-6 text-center text-sm text-amber-800'>
-              {options?.message || '钉钉扫码登录未配置，请联系管理员'}
+              钉钉扫码登录未配置，请联系管理员
             </div>
           ) : null}
 
-          {passwordEnabled ? (
+          {localPassword ? (
             <div className={dingEnabled ? 'mt-2' : undefined}>
               {dingEnabled ? (
                 <Divider plain>
-                  <Button
-                    type='link'
-                    size='small'
-                    onClick={() => setShowPassword((v) => !v)}
-                  >
-                    {showPassword ? '收起账号密码' : '本机账号密码登录'}
-                  </Button>
+                  <span className='text-xs text-gray-400'>本机账号密码</span>
                 </Divider>
               ) : null}
-              {(showPassword || !dingEnabled) && (
-                <Form
-                  form={form}
-                  size='large'
-                  onFinish={(values) => void completePasswordLogin(values.username, values.password)}
+              <Form
+                form={form}
+                size='large'
+                onFinish={(values) => void completePasswordLogin(values.username, values.password)}
+              >
+                <Form.Item
+                  name='username'
+                  rules={[{ required: true, message: '请输入用户名' }]}
                 >
-                  <Form.Item
-                    name='username'
-                    rules={[{ required: true, message: '请输入用户名' }]}
+                  <Input
+                    prefix={<UserOutlined className='text-gray-400' />}
+                    placeholder='用户名'
+                    className='rounded-lg!'
+                  />
+                </Form.Item>
+                <Form.Item
+                  name='password'
+                  rules={[{ required: true, message: '请输入密码' }]}
+                >
+                  <Input.Password
+                    prefix={<LockOutlined className='text-gray-400' />}
+                    placeholder='密码'
+                    className='rounded-lg!'
+                  />
+                </Form.Item>
+                <Form.Item className='mb-0!'>
+                  <Button
+                    type='primary'
+                    htmlType='submit'
+                    loading={loading}
+                    block
+                    className='h-11! rounded-lg! text-base! font-medium!'
                   >
-                    <Input
-                      prefix={<UserOutlined className='text-gray-400' />}
-                      placeholder='用户名'
-                      className='rounded-lg!'
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    name='password'
-                    rules={[{ required: true, message: '请输入密码' }]}
-                  >
-                    <Input.Password
-                      prefix={<LockOutlined className='text-gray-400' />}
-                      placeholder='密码'
-                      className='rounded-lg!'
-                    />
-                  </Form.Item>
-                  <Form.Item className='mb-0!'>
-                    <Button
-                      type='primary'
-                      htmlType='submit'
-                      loading={loading}
-                      block
-                      className='h-11! rounded-lg! text-base! font-medium!'
-                    >
-                      登 录
-                    </Button>
-                  </Form.Item>
-                </Form>
-              )}
+                    登 录
+                  </Button>
+                </Form.Item>
+              </Form>
             </div>
           ) : null}
         </Spin>

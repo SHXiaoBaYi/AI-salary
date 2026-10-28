@@ -85,6 +85,7 @@ com\base\admin\service\SysRoleService.class
 com\base\admin\domain\vo\UserInfoVO.class
 com\base\admin\domain\vo\RoleSimpleVO.class
 com\base\admin\mapper\SysLoginLogMapper.class
+com\base\admin\config\LogSchemaMigrator.class
 com\base\admin\config\MybatisPlusConfig$1.class
 com\base\admin\exception\GlobalExceptionHandler.class
 com\base\admin\common\BaseEntity.class

@@ -227,7 +227,7 @@ const UserManage = memo(function UserManage() {
             key='hint'
             className='text-sm text-neutral-500'
           >
-            新用户请通过钉钉扫码登录自动注册（默认普通账号）
+            钉钉扫码仅允许手机号已登记的用户登录，成功后自动绑定企业用户ID、unionId 和邮箱
           </span>,
         ]}
       />

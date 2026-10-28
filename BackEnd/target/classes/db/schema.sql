@@ -95,6 +95,7 @@ CREATE TABLE sys_login_log (
   status        TINYINT      DEFAULT 0                 COMMENT 'Status: 0=success, 1=fail',
   msg           VARCHAR(255) DEFAULT ''                COMMENT 'Message',
   login_time    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT 'Login time',
+  is_active     TINYINT      NOT NULL DEFAULT 1        COMMENT 'Soft delete: 1=active 0=deleted',
   PRIMARY KEY (log_id),
   INDEX idx_login_time (login_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Login log';
@@ -116,6 +117,7 @@ CREATE TABLE sys_oper_log (
   error_msg      TEXT                                    COMMENT 'Error message',
   oper_time      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT 'Operation time',
   cost_time      BIGINT       DEFAULT 0                 COMMENT 'Cost time (ms)',
+  is_active      TINYINT      NOT NULL DEFAULT 1       COMMENT 'Soft delete: 1=active 0=deleted',
   PRIMARY KEY (log_id),
   INDEX idx_oper_time (oper_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Operation log';
@@ -237,6 +239,7 @@ CREATE TABLE IF NOT EXISTS sys_user_online (
   user_agent  VARCHAR(512) DEFAULT '' COMMENT 'User-Agent',
   login_time  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
   expire_time DATETIME     NOT NULL COMMENT '过期时间',
+  is_active   TINYINT      NOT NULL DEFAULT 1 COMMENT '1有效 0删除',
   PRIMARY KEY (user_id),
   KEY idx_token_id (token_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='在线会话';

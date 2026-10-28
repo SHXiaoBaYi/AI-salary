@@ -37,7 +37,7 @@ public class DingTalkAuthService {
         }
         try {
             String userToken = exchangeUserAccessToken(credential, authCode.trim());
-            return fetchContactMe(userToken);
+            return attachCorpProfile(credential, fetchContactMe(userToken));
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
@@ -162,7 +162,57 @@ public class DingTalkAuthService {
         String nick = firstNonBlank(json.path("nick").asText(""), json.path("nickName").asText(""));
         String mobile = firstNonBlank(json.path("mobile").asText(""), json.path("mobileNumber").asText(""));
         String avatar = json.path("avatarUrl").asText("");
-        return new UserProfile(unionId, openId, nick, normalizeMobile(mobile), avatar);
+        String email = firstNonBlank(json.path("email").asText(""), json.path("orgEmail").asText(""));
+        return new UserProfile(unionId, openId, nick, normalizeMobile(mobile), avatar, email, "");
+    }
+
+    /** 用 unionId 补全企业 userid、通讯录手机号和企业邮箱。通讯录失败时保留扫码个人信息。 */
+    private UserProfile attachCorpProfile(DingTalkAppService.Credential credential, UserProfile me) {
+        String corpUserId = "";
+        String email = me.email() == null ? "" : me.email();
+        String mobile = me.mobile() == null ? "" : me.mobile();
+        String unionId = me.unionId();
+        String nick = me.nick() == null ? "" : me.nick();
+        String avatar = me.avatar() == null ? "" : me.avatar();
+        try {
+            String accessToken = appAccessToken(credential);
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("unionid", unionId);
+            JsonNode found = postJson(
+                    "https://oapi.dingtalk.com/topapi/user/getbyunionid?access_token="
+                            + URLEncoder.encode(accessToken, StandardCharsets.UTF_8),
+                    body,
+                    null);
+            if (found.path("errcode").asInt(-1) == 0) {
+                corpUserId = found.path("result").path("userid").asText("");
+            }
+            if (StringUtils.hasText(corpUserId)) {
+                ObjectNode get = objectMapper.createObjectNode();
+                get.put("userid", corpUserId.trim());
+                get.put("language", "zh_CN");
+                JsonNode detail = postJson(
+                        "https://oapi.dingtalk.com/topapi/v2/user/get?access_token="
+                                + URLEncoder.encode(accessToken, StandardCharsets.UTF_8),
+                        get,
+                        null);
+                if (detail.path("errcode").asInt(-1) == 0) {
+                    JsonNode user = detail.path("result");
+                    unionId = firstNonBlank(user.path("unionid").asText(""), user.path("unionId").asText(""), unionId);
+                    nick = firstNonBlank(nick, user.path("name").asText(""), user.path("nickname").asText(""));
+                    String corpMobile = normalizeMobile(user.path("mobile").asText(""));
+                    if (StringUtils.hasText(corpMobile)) {
+                        mobile = corpMobile;
+                    }
+                    email = firstNonBlank(user.path("org_email").asText(""), user.path("email").asText(""), email);
+                    avatar = firstNonBlank(avatar, user.path("avatar").asText(""));
+                }
+            }
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ignored) {
+            // 通讯录补全失败时仍用扫码返回的手机号做校验
+        }
+        return new UserProfile(unionId, me.openId(), nick, mobile, avatar, email, corpUserId == null ? "" : corpUserId.trim());
     }
 
     private JsonNode postJson(String url, ObjectNode body, String userToken) throws Exception {
@@ -178,7 +228,7 @@ public class DingTalkAuthService {
         return objectMapper.readTree(response.body() == null ? "{}" : response.body());
     }
 
-    private static String normalizeMobile(String mobile) {
+    public static String normalizeMobile(String mobile) {
         if (!StringUtils.hasText(mobile)) {
             return "";
         }
@@ -201,13 +251,14 @@ public class DingTalkAuthService {
         return "";
     }
 
-    public record UserProfile(String unionId, String openId, String nick, String mobile, String avatar) {
+    public record UserProfile(String unionId, String openId, String nick, String mobile, String avatar, String email,
+                               String corpUserId) {
     }
 
     public record CorpIdentity(String userid, String unionId, String nick, String mobile, String avatar) {
         public UserProfile toProfile() {
             return new UserProfile(unionId, "", nick == null ? "" : nick, mobile == null ? "" : mobile,
-                    avatar == null ? "" : avatar);
+                    avatar == null ? "" : avatar, "", userid == null ? "" : userid);
         }
     }
 }
