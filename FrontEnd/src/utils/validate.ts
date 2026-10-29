@@ -23,8 +23,11 @@ const validate = {
     { min: 6, message: '密码长度不能少于6位' },
   ] as Rule[],
 
-  /** 手机号（中国大陆） */
-  phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' }] as Rule[],
+  /** 手机号（中国大陆，必填） */
+  phone: [
+    { required: true, message: '请填写手机号' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号' },
+  ] as Rule[],
 
   /** 邮箱 */
   email: [{ type: 'email', message: '请输入正确的邮箱格式' }] as Rule[],

@@ -113,6 +113,48 @@ public class DingTalkAuthService {
         }
     }
 
+    /** 企业内部应用 accessToken，供通讯录等服务端接口使用。 */
+    public String requireAppAccessToken() {
+        DingTalkAppService.Credential credential = dingTalkAppService.credential();
+        if (credential == null) {
+            throw new BusinessException("钉钉应用未配置或未启用");
+        }
+        try {
+            return appAccessToken(credential);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException("获取钉钉访问凭证失败：" + ex.getMessage());
+        }
+    }
+
+    /** 调用 oapi 旧版接口。errcode 非 0 时抛出业务异常，不记录响应正文。 */
+    public JsonNode postOapi(String accessToken, String apiPath, ObjectNode body) {
+        return postOapi(accessToken, apiPath, body,
+                "钉钉通讯录权限不足：请在开放平台为该应用开通「通讯录部门信息读权限」和「成员信息读权限」。");
+    }
+
+    public JsonNode postOapi(String accessToken, String apiPath, ObjectNode body, String permissionHint) {
+        try {
+            String url = "https://oapi.dingtalk.com/" + apiPath + "?access_token="
+                    + URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
+            JsonNode json = postJson(url, body, null);
+            int code = json.path("errcode").asInt(0);
+            if (code != 0) {
+                String err = firstNonBlank(json.path("errmsg").asText(""), "钉钉接口失败");
+                if (code == 60011 || code == 60020 || err.contains("权限")) {
+                    throw new BusinessException(permissionHint + err);
+                }
+                throw new BusinessException("钉钉接口失败：" + err);
+            }
+            return json;
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException("调用钉钉失败：" + ex.getMessage());
+        }
+    }
+
     private String appAccessToken(DingTalkAppService.Credential credential) throws Exception {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("appKey", credential.clientId());

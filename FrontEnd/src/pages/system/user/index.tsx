@@ -1,12 +1,13 @@
 import { memo, useRef, useState, useMemo, useEffect } from 'react';
-import { ProFormSelect } from '@ant-design/pro-components';
+import { ProFormSelect, ProFormText } from '@ant-design/pro-components';
 import type { ActionType, ProColumnType } from '@ant-design/pro-components';
 import BaseProTable from '@/components/BaseProTable';
 import BaseModalForm from '@/components/BaseModalForm/index';
 import { App, Tag } from 'antd';
-import { getUserListApi, updateUserApi, assignRolesApi } from '@/api/user';
+import { assignRolesApi, createUserApi, deleteUserApi, getUserListApi, resetPwdApi, updateUserApi } from '@/api/user';
 import { getRoleListApi } from '@/api/role';
 import ActionButtons from '@/components/Buttons/ActionButtons';
+import PermissionButton from '@/components/Buttons/PermissionButton';
 import TableModal from '@/components/TableModal';
 import dictionary from '@/dictionary';
 import IconStatus from '@/components/IconStatus';
@@ -22,23 +23,27 @@ const UserManage = memo(function UserManage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [assignRoleOpen, setAssignRoleOpen] = useState(false);
+  const [resetPwdOpen, setResetPwdOpen] = useState(false);
   const [assignRoleUserId, setAssignRoleUserId] = useState<number>(0);
+  const [resetPwdUserId, setResetPwdUserId] = useState<number>(0);
   const [initialRoleIds, setInitialRoleIds] = useState<number[]>([]);
   const [allRoles, setAllRoles] = useState<{ key: string; title: string }[]>([]);
   const [formModalKey, setFormModalKey] = useState(0);
 
-  const openUserModal = async (user?: UserVO) => {
+  const openUserModal = (user?: UserVO) => {
     setEditingUser(user ?? null);
     setFormModalKey((k) => k + 1);
+    setFormOpen(true);
   };
 
   useEffect(() => {
     getRoleListApi({ pageNum: 1, pageSize: 100 }).then((res) => {
-      setAllRoles(res.rows?.map((r) => ({ key: String(r.roleId), title: r.roleName })));
+      setAllRoles(res.rows?.map((r) => ({ key: String(r.roleId), title: r.roleName })) ?? []);
     });
   }, []);
 
   const columns: ProColumnType<UserVO>[] = useMemo(() => {
+    const isEdit = Boolean(editingUser);
     const result: ProColumnType<UserVO>[] = [
       {
         title: '用户名',
@@ -52,10 +57,26 @@ const UserManage = memo(function UserManage() {
         dataIndex: 'username',
         hideInTable: true,
         search: false,
-        fieldProps: { disabled: true },
+        fieldProps: { disabled: isEdit, placeholder: '登录用户名' },
+        formItemProps: { rules: validate.username },
+      },
+      {
+        title: '密码',
+        dataIndex: 'password',
+        hideInTable: true,
+        search: false,
+        hideInForm: isEdit,
+        valueType: 'password',
+        fieldProps: { placeholder: '至少6位' },
+        formItemProps: { rules: validate.password },
       },
       { title: '昵称', dataIndex: 'nickname', width: 100, ellipsis: true },
-      { title: '手机号', dataIndex: 'phone', width: 140, formItemProps: { rules: validate.phone } },
+      {
+        title: '手机号',
+        dataIndex: 'phone',
+        width: 140,
+        formItemProps: { rules: validate.phone },
+      },
       {
         title: '钉钉',
         dataIndex: 'dingtalkBound',
@@ -171,7 +192,7 @@ const UserManage = memo(function UserManage() {
       {
         title: '操作',
         valueType: 'option',
-        width: 200,
+        width: 260,
         render: (_, record) => (
           <ActionButtons
             items={[
@@ -179,10 +200,7 @@ const UserManage = memo(function UserManage() {
                 key: 'edit',
                 perm: 'system:user:edit',
                 label: '编辑',
-                onClick: () => {
-                  openUserModal(record);
-                  setFormOpen(true);
-                },
+                onClick: () => openUserModal(record),
               },
               {
                 key: 'assignRole',
@@ -190,16 +208,36 @@ const UserManage = memo(function UserManage() {
                 label: '分配角色',
                 onClick: async () => {
                   setAssignRoleUserId(record.userId);
-                  setInitialRoleIds(record.roles?.map((r) => r.roleId));
+                  setInitialRoleIds(record.roles?.map((r) => r.roleId) ?? []);
                   setAssignRoleOpen(true);
+                },
+              },
+              {
+                key: 'resetPwd',
+                perm: 'system:user:resetPwd',
+                label: '重置密码',
+                onClick: () => {
+                  setResetPwdUserId(record.userId);
+                  setResetPwdOpen(true);
                 },
               },
               {
                 key: 'detail',
                 label: '详情',
                 onClick: () => {
-                  openUserModal(record);
+                  setEditingUser(record);
                   setDetailOpen(true);
+                },
+              },
+              {
+                key: 'delete',
+                perm: 'system:user:delete',
+                label: '删除',
+                confirmTitle: `删除用户「${record.username}」？`,
+                onClick: async () => {
+                  await deleteUserApi(record.userId);
+                  message.success('已删除');
+                  actionRef.current?.reload();
                 },
               },
             ]}
@@ -208,7 +246,7 @@ const UserManage = memo(function UserManage() {
       },
     ];
     return result;
-  }, [allRoles, message]);
+  }, [allRoles, editingUser, message]);
 
   return (
     <>
@@ -216,26 +254,33 @@ const UserManage = memo(function UserManage() {
         headerTitle='用户列表'
         actionRef={actionRef}
         rowKey='userId'
-        scroll={{ x: 1680 }}
+        scroll={{ x: 1760 }}
         request={async (params) => {
           const { rows: data, total } = await getUserListApi(tools.handleSearchParams(params));
           return { data, total, success: true };
         }}
         columns={columns}
         toolBarRender={() => [
-          <span
-            key='hint'
-            className='text-sm text-neutral-500'
+          <PermissionButton
+            key='add'
+            perm='system:user:add'
+            type='primary'
+            onClick={() => openUserModal()}
           >
-            钉钉扫码仅允许手机号已登记的用户登录，成功后自动绑定企业用户ID、unionId 和邮箱
-          </span>,
+            新增用户
+          </PermissionButton>,
         ]}
+        tableExtraRender={() => (
+          <div className='mb-3 text-sm text-neutral-500'>
+            支持手动新增、编辑、删除。手机号必填且不能重复，钉钉扫码登录按手机号匹配已登记用户。
+          </div>
+        )}
       />
 
       <TableModal
         key={formModalKey}
         readonly={false}
-        title='编辑用户'
+        title={editingUser ? '编辑用户' : '新增用户'}
         columns={columns as any}
         open={formOpen}
         onOpenChange={setFormOpen}
@@ -245,10 +290,16 @@ const UserManage = memo(function UserManage() {
             : ({ gender: 0, status: 0 } as any)
         }
         onFinish={async (values) => {
-          if (!editingUser) return false;
-          const dto = { ...values, userId: editingUser.userId } as any;
-          await updateUserApi(dto);
-          message.success('已更新');
+          const dto = { ...values } as any;
+          if (editingUser) {
+            dto.userId = editingUser.userId;
+            dto.username = editingUser.username;
+            await updateUserApi(dto);
+            message.success('已更新');
+          } else {
+            await createUserApi(dto);
+            message.success('已新增');
+          }
           actionRef.current?.reload();
           return true;
         }}
@@ -289,7 +340,27 @@ const UserManage = memo(function UserManage() {
           options={allRoles?.map((r) => ({ value: Number(r.key), label: r.title }))}
         />
       </BaseModalForm>
+
+      <BaseModalForm
+        title='重置密码'
+        width={400}
+        open={resetPwdOpen}
+        onOpenChange={setResetPwdOpen}
+        onFinish={async (values) => {
+          await resetPwdApi(resetPwdUserId, values.password);
+          message.success('密码已重置');
+          return true;
+        }}
+      >
+        <ProFormText.Password
+          name='password'
+          label='新密码'
+          rules={validate.password}
+          placeholder='至少6位'
+        />
+      </BaseModalForm>
     </>
   );
 });
+
 export default UserManage;

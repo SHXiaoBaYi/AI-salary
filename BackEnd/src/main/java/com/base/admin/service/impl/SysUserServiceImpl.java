@@ -16,9 +16,11 @@ import com.base.admin.exception.BusinessException;
 import com.base.admin.mapper.SysRoleMapper;
 import com.base.admin.mapper.SysUserMapper;
 import com.base.admin.mapper.SysUserRoleMapper;
+import com.base.admin.common.Constants;
 import com.base.admin.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -38,6 +40,7 @@ public class SysUserServiceImpl implements SysUserService {
     private final SysUserRoleMapper userRoleMapper;
     private final SysRoleMapper roleMapper;
     private final JdbcTemplate jdbc;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public PageResult<UserVO> list(UserPageQueryDTO query) {
@@ -96,20 +99,43 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional
     public void create(UserDTO dto) {
-        throw new BusinessException("已关闭手动新增用户，请通过钉钉扫码登录自动注册");
+        String username = dto.getUsername().trim();
+        String phone = requirePhone(dto.getPhone());
+        if (!StringUtils.hasText(dto.getPassword()) || dto.getPassword().trim().length() < 6) {
+            throw new BusinessException("请填写至少6位密码");
+        }
+        assertUsernameUnique(username, null);
+        assertPhoneUnique(phone, null);
+        SysUser user = new SysUser();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(dto.getPassword().trim()));
+        user.setNickname(StringUtils.hasText(dto.getNickname()) ? dto.getNickname().trim() : username);
+        user.setEmail(blankToNull(dto.getEmail()));
+        user.setPhone(phone);
+        user.setGender(dto.getGender() == null ? 0 : dto.getGender());
+        user.setStatus(dto.getStatus() == null ? Constants.STATUS_ACTIVE : dto.getStatus());
+        user.setRemark(dto.getRemark());
+        userMapper.insert(user);
+        if (dto.getRoleIds() != null && !dto.getRoleIds().isEmpty()) {
+            saveUserRoles(user.getUserId(), dto.getRoleIds());
+        }
     }
 
     @Override
     @Transactional
     public void update(UserDTO dto) {
+        if (dto.getUserId() == null) {
+            throw new BusinessException("缺少用户ID");
+        }
         SysUser user = userMapper.selectById(dto.getUserId());
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
-        String newPhone = dto.getPhone() == null ? "" : dto.getPhone().trim();
+        String phone = requirePhone(dto.getPhone());
+        assertPhoneUnique(phone, dto.getUserId());
         user.setNickname(dto.getNickname());
-        user.setEmail(dto.getEmail());
-        user.setPhone(newPhone.isEmpty() ? null : newPhone);
+        user.setEmail(blankToNull(dto.getEmail()));
+        user.setPhone(phone);
         user.setGender(dto.getGender());
         user.setStatus(dto.getStatus());
         user.setRemark(dto.getRemark());
@@ -123,18 +149,42 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional
     public void delete(Long userId) {
-        throw new BusinessException("已关闭删除用户，如需停用请在编辑中将账户状态设为停用");
+        if (userId == null) {
+            throw new BusinessException("缺少用户ID");
+        }
+        if (userId == 1L) {
+            throw new BusinessException("不能删除超级管理员");
+        }
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        userMapper.deleteById(userId);
+        userRoleMapper.deleteByUserId(userId);
     }
 
     @Override
     @Transactional
     public void deleteBatch(List<Long> ids) {
-        throw new BusinessException("已关闭批量删除用户");
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        for (Long id : ids) {
+            delete(id);
+        }
     }
 
     @Override
     public void resetPwd(Long userId, String password) {
-        throw new BusinessException("已关闭重置密码，请使用钉钉扫码登录");
+        if (!StringUtils.hasText(password) || password.trim().length() < 6) {
+            throw new BusinessException("请填写至少6位密码");
+        }
+        SysUser user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        user.setPassword(passwordEncoder.encode(password.trim()));
+        userMapper.updateById(user);
     }
 
     @Override
@@ -171,6 +221,39 @@ public class SysUserServiceImpl implements SysUserService {
                 userRoleMapper.insertUserRole(userId, roleId);
             }
         }
+    }
+
+    private static String requirePhone(String phone) {
+        String value = phone == null ? "" : phone.trim();
+        if (!value.matches("^1[3-9]\\d{9}$")) {
+            throw new BusinessException("请输入正确的手机号");
+        }
+        return value;
+    }
+
+    private void assertUsernameUnique(String username, Long excludeUserId) {
+        Long count = userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, username)
+                .ne(excludeUserId != null, SysUser::getUserId, excludeUserId));
+        if (count != null && count > 0) {
+            throw new BusinessException("用户名已存在");
+        }
+    }
+
+    private void assertPhoneUnique(String phone, Long excludeUserId) {
+        Long count = userMapper.selectCount(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getPhone, phone)
+                .ne(excludeUserId != null, SysUser::getUserId, excludeUserId));
+        if (count != null && count > 0) {
+            throw new BusinessException("手机号已被其他用户使用");
+        }
+    }
+
+    private static String blankToNull(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 
     private UserVO toUserVO(SysUser user) {

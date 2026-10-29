@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
-@Tag(name = "用户管理", description = "系统用户查询、编辑与角色分配（新增/删除/导入导出/重置密码已关闭，新用户走钉钉扫码注册）")
+@Tag(name = "用户管理", description = "系统用户手动增删改查，手机号必填；也可钉钉扫码绑定")
 @RestController
 @RequestMapping("/system/user")
 @RequiredArgsConstructor
@@ -46,7 +46,7 @@ public class SysUserController {
         return Result.ok(userService.getById(userId));
     }
 
-    @Operation(summary = "新增用户（已关闭）")
+    @Operation(summary = "新增用户")
     @PostMapping
     @RequiresPermission("system:user:add")
     @Log(title = "用户管理", businessType = 1)
@@ -64,7 +64,7 @@ public class SysUserController {
         return Result.ok();
     }
 
-    @Operation(summary = "删除用户（已关闭）")
+    @Operation(summary = "删除用户")
     @DeleteMapping("/{userId}")
     @RequiresPermission("system:user:delete")
     @Log(title = "用户管理", businessType = 3)
@@ -73,7 +73,7 @@ public class SysUserController {
         return Result.ok();
     }
 
-    @Operation(summary = "批量删除用户（已关闭）")
+    @Operation(summary = "批量删除用户")
     @DeleteMapping("/batch")
     @RequiresPermission("system:user:delete")
     @Log(title = "用户管理-批量删除", businessType = 3)
@@ -82,7 +82,7 @@ public class SysUserController {
         return Result.ok();
     }
 
-    @Operation(summary = "重置用户密码（已关闭）")
+    @Operation(summary = "重置用户密码")
     @PutMapping("/resetPwd")
     @RequiresPermission("system:user:resetPwd")
     @Log(title = "用户管理-重置密码", businessType = 2)

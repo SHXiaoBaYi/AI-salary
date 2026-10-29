@@ -2,6 +2,8 @@ package com.base.admin.domain.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
@@ -13,7 +15,8 @@ public class UserDTO {
     @Schema(description = "用户ID（新增不传，修改必传）", example = "1", nullable = true)
     private Long userId;
 
-    @NotBlank(message = "Username cannot be empty")
+    @NotBlank(message = "请填写用户名")
+    @Size(max = 50, message = "用户名不能超过50字")
     @Schema(description = "用户名", requiredMode = Schema.RequiredMode.REQUIRED, example = "zhangsan")
     private String username;
 
@@ -26,7 +29,9 @@ public class UserDTO {
     @Schema(description = "邮箱", example = "zhangsan@example.com")
     private String email;
 
-    @Schema(description = "手机号", example = "13800138000")
+    @NotBlank(message = "请填写手机号")
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "请输入正确的手机号")
+    @Schema(description = "手机号", requiredMode = Schema.RequiredMode.REQUIRED, example = "13800138000")
     private String phone;
 
     @Schema(description = "性别（0=未知 1=男 2=女）", example = "1")
