@@ -292,6 +292,13 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 )
                 """);
         jdbc.update("""
+                INSERT INTO pay_fee_category (category_name, month_rule, fee_kind, sort_order, create_by, is_active)
+                SELECT '个税', '', 'deduct', 2, 'system', 1
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM pay_fee_category WHERE category_name = '个税' AND is_active = 1
+                )
+                """);
+        jdbc.update("""
                 UPDATE pay_fee_category
                 SET month_rule = 'hire'
                 WHERE category_name = '新入职人员碳14费用' AND is_active = 1 AND month_rule = ''
@@ -300,6 +307,11 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 UPDATE pay_fee_category
                 SET fee_kind = 'deduct'
                 WHERE is_active = 1 AND (fee_kind IS NULL OR fee_kind = '')
+                """);
+        jdbc.update("""
+                UPDATE pay_fee_category
+                SET fee_kind = 'deduct'
+                WHERE category_name = '个税' AND is_active = 1 AND fee_kind <> 'deduct'
                 """);
     }
 

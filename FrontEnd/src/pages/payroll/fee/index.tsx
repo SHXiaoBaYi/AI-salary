@@ -235,7 +235,7 @@ const PayrollFeePage = memo(function PayrollFeePage() {
   return (
     <>
       <p className='mb-3 text-sm text-neutral-500'>
-        核算工资时记在这里，每笔费用要选归属月份。新入职人员碳14费用固定为入职当月，不能改。其他类目可以再加。
+        核算工资时记在这里，每笔费用要选归属月份。新入职人员碳14费用固定为入职当月，不能改。「个税」类目（扣费类）一期先手工录入，生成工资明细时写入个税列；其他扣费进其他扣款，加钱类进补发。
       </p>
       <BaseProTable<PayEmployeeFee>
         rowKey='id'

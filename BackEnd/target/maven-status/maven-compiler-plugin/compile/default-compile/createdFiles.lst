@@ -19,7 +19,9 @@ com\base\admin\controller\PayrollBulletinController.class
 com\base\admin\domain\vo\PayDingTalkPullVO.class
 com\base\admin\service\DingTalkAppService$Stored.class
 com\base\admin\service\PayrollDingTalkPullService$Staff.class
+com\base\admin\service\PayrollSocialCalcService$EmployeeSocial.class
 com\base\admin\controller\PayrollRewardController.class
+com\base\admin\service\PayrollWageExportService$Job.class
 com\base\admin\domain\vo\PayAttendanceVO.class
 com\base\admin\security\JwtUtils.class
 com\base\admin\domain\dto\PayAttendanceQueryDTO.class
@@ -32,6 +34,7 @@ com\base\admin\domain\vo\PaySocialRuleVO.class
 com\base\admin\service\impl\SysUserServiceImpl.class
 com\base\admin\service\AiChatService$ResolvedEndpoint.class
 com\base\admin\domain\dto\PayPerformanceDTO.class
+com\base\admin\service\PayrollWageExportService$LateRule.class
 com\base\admin\config\DingTalkSchemaMigrator.class
 com\base\admin\domain\entity\SysUser.class
 com\base\admin\common\PayRewardKinds.class
@@ -85,6 +88,7 @@ com\base\admin\domain\vo\PayDingTalkSyncVO.class
 com\base\admin\domain\vo\PayLateRuleVO.class
 com\base\admin\domain\dto\PaySocialRuleItemDTO.class
 com\base\admin\security\JwtAuthenticationFilter.class
+com\base\admin\service\PayrollWageExportService.class
 com\base\admin\controller\PayrollCalendarController.class
 com\base\admin\domain\dto\DingTalkAppDTO.class
 com\base\admin\service\PayrollBulletinSyncService$Category.class
@@ -97,6 +101,7 @@ com\base\admin\config\SecurityConfig.class
 com\base\admin\domain\dto\PaySocialRuleDTO.class
 com\base\admin\domain\entity\SysUserRole.class
 com\base\admin\domain\vo\RoleVO.class
+com\base\admin\service\PayrollSocialCalcService$PersonalDeduct.class
 com\base\admin\domain\vo\SysUserOptionVO.class
 com\base\admin\util\LocalhostAccess.class
 com\base\admin\service\impl\SysRoleServiceImpl.class
@@ -105,6 +110,8 @@ com\base\admin\security\UserDetailsServiceImpl.class
 com\base\admin\config\AiProperties$ProviderOption.class
 com\base\admin\service\PayrollBaseService.class
 com\base\admin\service\PayrollAttendanceSummaryService$Agg.class
+com\base\admin\service\PayrollWageExportService$Line.class
+com\base\admin\service\PayrollSocialCalcService$Item.class
 com\base\admin\aspect\LogAspect.class
 com\base\admin\common\Result.class
 com\base\admin\domain\entity\SysLoginLog.class
@@ -136,6 +143,8 @@ com\base\admin\service\PayrollBulletinSyncService.class
 com\base\admin\service\PayrollSocialService.class
 com\base\admin\domain\dto\PayPostQueryDTO.class
 com\base\admin\domain\dto\DingTalkSsoDTO.class
+com\base\admin\service\PayrollWageExportService$Emp.class
+com\base\admin\service\PayrollSocialCalcService$Rule.class
 com\base\admin\service\PayrollAttendanceSyncService.class
 com\base\admin\domain\dto\PayLateRuleDTO.class
 com\base\admin\domain\dto\SysAiProviderDTO.class
@@ -164,11 +173,13 @@ com\base\admin\service\PayrollPerformanceService.class
 com\base\admin\config\OpenApiConfig.class
 com\base\admin\domain\dto\ResetPwdDTO.class
 com\base\admin\domain\entity\SysRoleMenu.class
+com\base\admin\service\PayrollWageExportService$Att.class
 com\base\admin\domain\dto\PayEmployeeFeeDTO.class
 com\base\admin\domain\vo\LoginVO$LoginVOBuilder.class
 com\base\admin\domain\dto\RoleMenuDTO.class
 com\base\admin\config\JacksonConfig.class
 com\base\admin\domain\vo\UserInfoVO.class
+com\base\admin\domain\vo\PayWageExportJobVO.class
 com\base\admin\domain\vo\RoleSimpleVO.class
 com\base\admin\service\PayrollDingTalkPullService$PeriodWindow.class
 com\base\admin\config\MybatisPlusConfig$1.class
@@ -197,6 +208,7 @@ com\base\admin\domain\dto\PayBulletinQueryDTO.class
 com\base\admin\config\DingTalkProperties.class
 com\base\admin\service\PayrollAttendanceSummaryService.class
 com\base\admin\service\PayrollAttendanceSyncService$Row.class
+com\base\admin\service\PayrollSocialCalcService.class
 com\base\admin\domain\entity\SysOperLog.class
 com\base\admin\service\DingTalkAuthService.class
 com\base\admin\domain\dto\PayGradeQueryDTO.class

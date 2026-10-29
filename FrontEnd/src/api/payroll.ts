@@ -1,5 +1,7 @@
 import request from './request';
 import type { PageResult } from '@/types/api';
+import { getToken } from '@/utils/auth';
+import { withBase } from '@/utils/basePath';
 
 export type PayDept = {
   id: number;
@@ -163,6 +165,43 @@ export type PayDingTalkSyncResult = {
 
 export function syncPayEmployeeFromDingTalkApi() {
   return request.post<unknown, PayDingTalkSyncResult>('/payroll/employee/sync-dingtalk', {}, { timeout: 120000 });
+}
+
+export type PayWageExportJob = {
+  jobId: string;
+  period: string;
+  status: 'pending' | 'running' | 'done' | 'failed' | string;
+  percent: number;
+  message?: string;
+  fileName?: string;
+};
+
+export function startPayWageExportApi(period: string) {
+  return request.post<unknown, PayWageExportJob>('/payroll/employee/wage-export/start', { period }, { timeout: 60000 });
+}
+
+export function getPayWageExportProgressApi(jobId: string) {
+  return request.get<unknown, PayWageExportJob>(`/payroll/employee/wage-export/${jobId}/progress`);
+}
+
+export async function downloadPayWageExportApi(jobId: string, fileName?: string) {
+  const token = getToken();
+  const res = await fetch(withBase(`/api/payroll/employee/wage-export/${jobId}/download`), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error('下载失败');
+  }
+  const blob = await res.blob();
+  const objectUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = objectUrl;
+  a.download = fileName || '员工工资明细.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(objectUrl);
 }
 
 export type PaySocialRuleItem = {

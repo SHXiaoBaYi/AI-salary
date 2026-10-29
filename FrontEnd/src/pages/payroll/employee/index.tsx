@@ -1,23 +1,28 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { ActionType, ProColumnType } from '@ant-design/pro-components';
-import { App, DatePicker, Form, Input, InputNumber, Modal, Select, Tag } from 'antd';
+import { App, DatePicker, Form, Input, InputNumber, Modal, Progress, Select, Tag } from 'antd';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import BaseProTable from '@/components/BaseProTable';
 import ActionButtons from '@/components/Buttons/ActionButtons';
 import PermissionButton from '@/components/Buttons/PermissionButton';
 import tools from '@/utils/tools';
 import {
   deletePayEmployeeApi,
+  downloadPayWageExportApi,
   getPayDeptsApi,
   getPayEmployeeListApi,
   getPayGradesApi,
   getPayPostsApi,
+  getPayWageExportProgressApi,
   savePayEmployeeApi,
+  startPayWageExportApi,
   syncPayEmployeeFromDingTalkApi,
   type PayDept,
   type PayEmployee,
   type PayGrade,
   type PayPost,
+  type PayWageExportJob,
 } from '@/api/payroll';
 
 const SALARY_ITEMS: { name: keyof PayEmployee; label: string }[] = [
@@ -46,9 +51,24 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   const [editing, setEditing] = useState<PayEmployee | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [wageOpen, setWageOpen] = useState(false);
+  const [wageMonth, setWageMonth] = useState<Dayjs>(() => dayjs().subtract(1, 'month'));
+  const [wageJob, setWageJob] = useState<PayWageExportJob | null>(null);
+  const [wageStarting, setWageStarting] = useState(false);
+  const [wageDownloading, setWageDownloading] = useState(false);
+  const wagePollRef = useRef<number | null>(null);
   const [form] = Form.useForm();
   const formValues = Form.useWatch(true, form) as Partial<PayEmployee> | undefined;
   const salaryTotal = SALARY_ITEMS.reduce((sum, item) => sum + Number(formValues?.[item.name] || 0), 0);
+
+  const stopWagePoll = () => {
+    if (wagePollRef.current != null) {
+      window.clearInterval(wagePollRef.current);
+      wagePollRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopWagePoll(), []);
 
   const loadOptions = async () => {
     const [deptRows, postRows, gradeRows] = await Promise.all([getPayDeptsApi(), getPayPostsApi(), getPayGradesApi()]);
@@ -99,6 +119,61 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         }
       },
     });
+  };
+
+  const openWageExport = () => {
+    stopWagePoll();
+    setWageJob(null);
+    setWageMonth(dayjs().subtract(1, 'month'));
+    setWageOpen(true);
+  };
+
+  const startWageExport = async () => {
+    if (!wageMonth) {
+      message.warning('请选择生成月份');
+      return;
+    }
+    const period = wageMonth.format('YYYY-MM');
+    setWageStarting(true);
+    stopWagePoll();
+    try {
+      const job = await startPayWageExportApi(period);
+      setWageJob(job);
+      wagePollRef.current = window.setInterval(() => {
+        void (async () => {
+          try {
+            const next = await getPayWageExportProgressApi(job.jobId);
+            setWageJob(next);
+            if (next.status === 'done' || next.status === 'failed') {
+              stopWagePoll();
+              if (next.status === 'done') {
+                message.success(next.message || '工资明细已生成');
+              } else {
+                message.error(next.message || '生成失败');
+              }
+            }
+          } catch {
+            stopWagePoll();
+          }
+        })();
+      }, 800);
+    } catch {
+      // request interceptor already tips
+    } finally {
+      setWageStarting(false);
+    }
+  };
+
+  const downloadWage = async () => {
+    if (!wageJob?.jobId) return;
+    setWageDownloading(true);
+    try {
+      await downloadPayWageExportApi(wageJob.jobId, wageJob.fileName);
+    } catch {
+      message.error('下载失败，请重新生成');
+    } finally {
+      setWageDownloading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -251,6 +326,13 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         )}
         toolBarRender={() => [
           <PermissionButton
+            key='wage'
+            perm='payroll:employee:list'
+            onClick={openWageExport}
+          >
+            生成工资明细
+          </PermissionButton>,
+          <PermissionButton
             key='sync'
             perm='payroll:employee:edit'
             loading={syncing}
@@ -272,6 +354,59 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
           return { data: rows, total, success: true };
         }}
       />
+
+      <Modal
+        title='生成工资明细'
+        open={wageOpen}
+        onCancel={() => {
+          stopWagePoll();
+          setWageOpen(false);
+        }}
+        footer={null}
+        destroyOnHidden
+      >
+        <p className='mb-3 text-sm text-neutral-500'>
+          按模版「工资」表生成在职员工工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。数据较多时显示进度，完成后可下载
+          Excel。
+        </p>
+        <div className='mb-4 flex flex-wrap items-center gap-3'>
+          <span>算薪月份</span>
+          <DatePicker
+            picker='month'
+            value={wageMonth}
+            allowClear={false}
+            disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
+            onChange={(value) => value && setWageMonth(value)}
+          />
+          <PermissionButton
+            perm='payroll:employee:list'
+            type='primary'
+            loading={wageStarting}
+            disabled={wageJob?.status === 'pending' || wageJob?.status === 'running'}
+            onClick={() => void startWageExport()}
+          >
+            开始生成
+          </PermissionButton>
+          {wageJob?.status === 'done' ? (
+            <PermissionButton
+              perm='payroll:employee:list'
+              loading={wageDownloading}
+              onClick={() => void downloadWage()}
+            >
+              下载 Excel
+            </PermissionButton>
+          ) : null}
+        </div>
+        {wageJob ? (
+          <div className='space-y-2'>
+            <Progress
+              percent={wageJob.percent ?? 0}
+              status={wageJob.status === 'failed' ? 'exception' : wageJob.status === 'done' ? 'success' : 'active'}
+            />
+            <div className='text-sm text-neutral-500'>{wageJob.message}</div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         title={editing ? '编辑员工' : '新增员工'}

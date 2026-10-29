@@ -109,6 +109,7 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\PayPostVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\PayRewardVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\PaySocialRuleItemVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\PaySocialRuleVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\PayWageExportJobVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\PayWorkCalendarVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\RoleSimpleVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\RoleVO.java
@@ -155,7 +156,9 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollEmployeeService
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollFeeService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollPerformanceService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollRewardService.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollSocialCalcService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollSocialService.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\PayrollWageExportService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\SysAiProviderService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\SysLoginService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\SysMenuService.java
