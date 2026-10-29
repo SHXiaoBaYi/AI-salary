@@ -155,15 +155,34 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                   sort_order = VALUES(sort_order),
                   path = VALUES(path),
                   component = VALUES(component),
+                  menu_type = VALUES(menu_type),
                   perms = VALUES(perms),
                   icon = VALUES(icon),
+                  visible = 0,
+                  status = 0,
                   remark = VALUES(remark),
                   is_active = 1
                 """);
+        // 发版被旧包冲掉后，菜单行可能还在但角色授权被关掉，强制给超管加回
         jdbc.update("""
                 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, is_active)
                 SELECT 1, menu_id, 1 FROM sys_menu WHERE menu_id IN (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
                 """);
+        jdbc.update("""
+                UPDATE sys_role_menu
+                SET is_active = 1
+                WHERE role_id = 1
+                  AND menu_id IN (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
+                """);
+        Integer menuCount = jdbc.queryForObject("""
+                SELECT COUNT(1) FROM sys_menu
+                WHERE is_active = 1 AND menu_id BETWEEN 200 AND 224
+                """, Integer.class);
+        Integer roleMenuCount = jdbc.queryForObject("""
+                SELECT COUNT(1) FROM sys_role_menu
+                WHERE is_active = 1 AND role_id = 1 AND menu_id BETWEEN 200 AND 224
+                """, Integer.class);
+        log.info("算薪菜单已恢复 menu={} roleMenu={}", menuCount, roleMenuCount);
         log.info("算薪部门、岗位、职级、事假规则、社保规则与员工档案已同步");
     }
 
