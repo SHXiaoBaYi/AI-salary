@@ -15,10 +15,10 @@ description: >-
 
 | 环境 | 公网 | Profile | systemd 源 | 入口 |
 |------|------|---------|------------|------|
-| 测试 | `47.99.95.38` | `test` | `deploy/xby-admin-test.service` | http://47.99.95.38/shxby/ |
-| 生产 | `47.99.95.38` | `prod` | `deploy/xby-admin.service` | http://47.99.95.38/shxby/ |
+| 测试 | `47.99.95.38` | `test` | `deploy/xby-admin-test.service` | https://47.99.95.38/ |
+| 生产 | `47.99.95.38` | `prod` | `deploy/xby-admin.service` | https://47.99.95.38/ |
 
-两边布局相同：jar `/opt/xby-admin/base-admin-1.0.0.jar`，前端 `/opt/xby-admin/html/shxby/`，nginx `/etc/nginx/conf.d/xby-admin.conf`，服务名 `xby-admin`。`VITE_BASE=/shxby/`。不要自创发布路径。
+两边布局相同：jar `/opt/xby-admin/base-admin-1.0.0.jar`，前端 `/opt/xby-admin/html/`（站点根路径），nginx `/etc/nginx/conf.d/xby-admin.conf`，服务名 `xby-admin`。`VITE_BASE=/`。访问只走 `https://47.99.95.38/`，80 端口 301 到 HTTPS。不要自创发布路径。
 
 脚本：`./deploy/publish-ecs.sh test` 或 `./deploy/publish-ecs.sh prod`（也可 `./deploy/publish-ecs-test.sh`）。
 
@@ -50,7 +50,7 @@ description: >-
 并行：
 
 - 后端：Homebrew `/usr/local/opt/maven/bin/mvn -DskipTests clean package`（不要用坏掉的 `~/bin/mvn`），`all` 权限写 `~/.m2`
-- 前端：node `v20.20.2`；缺 `docx-preview` 则中止；`npx vite build`（`.env.production` 已有 `VITE_BASE=/shxby/`）
+- 前端：node `v20.20.2`；缺 `docx-preview` 则中止；`npx vite build`（线上 `VITE_BASE=/`）
 
 打完再上传。缺 jar / `dist/index.html` 不要发。
 
@@ -60,11 +60,11 @@ description: >-
 
 1. `scp` jar
 2. `scp` nginx 配置；`scp` 对应环境的 systemd 单元到 `/etc/systemd/system/xby-admin.service`
-3. 清空 `/opt/xby-admin/html/shxby` 后 `COPYFILE_DISABLE=1 tar --disable-copyfile --no-xattrs` 管道上传 dist（不要 `scp -r` / 不要指望 rsync）
+3. 清空 `/opt/xby-admin/html` 下除 `lakex` 以外的内容后，`COPYFILE_DISABLE=1 tar --disable-copyfile --no-xattrs` 管道上传 dist（不要 `scp -r` / 不要指望 rsync）
 4. `systemctl daemon-reload; nginx -t && nginx -s reload && systemctl restart --no-block xby-admin`
 5. **生产**：等 `.schema-migrate-ok` / `PROD_RELEASE_READY`（脚本已做）。测试可只等服务起来
 6. 等约 25s；**短 SSH** 看 `is-active`、`:8080`、远端 `index-*.js` 是否等于本地
-7. 机内 `curl -m 8`：`/shxby/` 与 `POST /shxby/api/auth/login`；再本机公网同样检查。以机内 200 为准
+7. 机内 `curl -m 8`：`https://127.0.0.1/` 与 `POST https://127.0.0.1/api/auth/login`（`-k` 仅机内回环时）；再本机公网 `https://47.99.95.38/` 同样检查。HTTP 必须是 301。以公网证书校验通过的 200 为准
 
 探活不要一条 SSH 里串一长串 curl 公网 IP（会卡住）。卡住就杀残留 sshpass 再短命令重试。
 

@@ -7,6 +7,6 @@
 #     username: your_user
 #     password: your_password
 # xby:
-#   upload-public-base: http://47.99.95.38/shxby/api
+#   upload-public-base: https://47.99.95.38/api
 # dingtalk:
-#   h5-base-url: http://47.99.95.38/shxby
+#   h5-base-url: https://47.99.95.38

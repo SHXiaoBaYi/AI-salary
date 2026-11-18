@@ -44,7 +44,7 @@ if [[ ! -f "$JAR" ]]; then
   exit 1
 fi
 if [[ ! -f "$DIST/index.html" ]]; then
-  echo "缺少前端 dist: $DIST （请先 VITE_BASE=/shxby/ 构建）" >&2
+  echo "缺少前端 dist: $DIST （请先 VITE_BASE=/ 构建）" >&2
   exit 1
 fi
 if [[ ! -f "$UNIT_SRC" ]]; then
@@ -128,15 +128,16 @@ scp_file "$NGINX_SRC" "$REMOTE:/etc/nginx/conf.d/xby-admin.conf"
 scp_file "$UNIT_SRC" "$REMOTE:/etc/systemd/system/xby-admin.service"
 
 echo "==> 准备前端目录"
-ssh_run "mkdir -p '$ECS_DIR/html/shxby' && rm -rf '$ECS_DIR/html/shxby/'*"
+# 站点在网站根。保留 html/lakex，清掉上一版构建产物后再铺 dist。
+ssh_run "mkdir -p '$ECS_DIR/html' && find '$ECS_DIR/html' -mindepth 1 -maxdepth 1 ! -name lakex -exec rm -rf {} +"
 
 echo "==> 上传前端（tar-pipe）"
 if [[ -n "${SSHPASS:-}" ]] && command -v sshpass >/dev/null 2>&1 && [[ -z "${ECS_IDENTITY:-}" ]]; then
   COPYFILE_DISABLE=1 tar --disable-copyfile --no-xattrs -C "$DIST" -czf - . \
-    | sshpass -e ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -C '$ECS_DIR/html/shxby' -xzf -"
+    | sshpass -e ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -C '$ECS_DIR/html' -xzf -"
 else
   COPYFILE_DISABLE=1 tar --disable-copyfile --no-xattrs -C "$DIST" -czf - . \
-    | ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -C '$ECS_DIR/html/shxby' -xzf -"
+    | ssh "${SSH_OPTS[@]}" "$REMOTE" "tar -C '$ECS_DIR/html' -xzf -"
 fi
 
 if [[ "$ENV_NAME" == "prod" ]]; then
@@ -193,5 +194,5 @@ if [[ "$ENV_NAME" == "prod" ]]; then
   echo "==> 已记录生产基线 $CURRENT_SHA"
 fi
 
-echo "UPLOAD_DONE  http://${ECS_HOST}/shxby/"
-echo "请轮询 :8080 与 /shxby/、/shxby/api/auth/login 直至 200"
+echo "UPLOAD_DONE  https://${ECS_HOST}/"
+echo "请轮询 :8080 与 https://${ECS_HOST}/ 、https://${ECS_HOST}/api/auth/login 直至 200。HTTP 会 301 到 HTTPS。"

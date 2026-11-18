@@ -7,7 +7,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 xby:
-  upload-public-base: ${UPLOAD_PUBLIC_BASE:http://47.99.95.38/shxby/api}
+  upload-public-base: ${UPLOAD_PUBLIC_BASE:https://47.99.95.38/api}
   # 测试 ECS 允许账号密码登录（生产仍仅钉钉）
   auth:
     password-login-enabled: true
