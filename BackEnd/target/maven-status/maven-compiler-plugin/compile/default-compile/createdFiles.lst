@@ -51,6 +51,7 @@ com/base/admin/domain/dto/PayEmployeeDTO.class
 com/base/admin/config/MybatisPlusConfig$1.class
 com/base/admin/mapper/SysUserRoleMapper.class
 com/base/admin/service/OnlineSessionService$TokenStatus.class
+com/base/admin/domain/dto/PayWageExportDTO.class
 com/base/admin/domain/vo/SysAiProviderVO.class
 com/base/admin/service/PayrollAttendanceSyncService.class
 com/base/admin/service/SysLoginService.class

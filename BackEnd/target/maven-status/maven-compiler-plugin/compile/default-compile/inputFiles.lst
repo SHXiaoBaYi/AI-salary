@@ -68,6 +68,7 @@
 /Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/PayRewardQueryDTO.java
 /Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/PaySocialRuleDTO.java
 /Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/PaySocialRuleItemDTO.java
+/Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/PayWageExportDTO.java
 /Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/PayWorkCalendarMonthDTO.java
 /Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/PayWorkCalendarSaveDTO.java
 /Users/wangfangyang/Desktop/work/xby/AI-salary/BackEnd/src/main/java/com/base/admin/domain/dto/ResetPwdDTO.java

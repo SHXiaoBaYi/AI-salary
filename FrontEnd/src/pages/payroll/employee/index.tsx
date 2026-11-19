@@ -23,6 +23,7 @@ import {
   type PayGrade,
   type PayPost,
   type PayWageExportJob,
+  type PayWageExportStart,
 } from '@/api/payroll';
 
 const WORK_PLACE_OPTIONS = [
@@ -46,6 +47,27 @@ const ZERO_SALARY = Object.fromEntries(SALARY_ITEMS.map((item) => [item.name, 0]
   number
 >;
 
+type WageListFilter = Omit<PayWageExportStart, 'period'>;
+
+function optionalNumber(value: unknown) {
+  if (value === '' || value === undefined || value === null) return undefined;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function pickWageFilter(query: Record<string, unknown>): WageListFilter {
+  const employeeName = typeof query.employeeName === 'string' ? query.employeeName.trim() : '';
+  const workPlace = typeof query.workPlace === 'string' ? query.workPlace.trim() : '';
+  return {
+    employeeName: employeeName || undefined,
+    deptId: optionalNumber(query.deptId),
+    postId: optionalNumber(query.postId),
+    gradeId: optionalNumber(query.gradeId),
+    jobStatus: optionalNumber(query.jobStatus),
+    workPlace: workPlace || undefined,
+  };
+}
+
 const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   const { message, modal } = App.useApp();
   const actionRef = useRef<ActionType>(null);
@@ -58,8 +80,8 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   const [syncing, setSyncing] = useState(false);
   const [wageOpen, setWageOpen] = useState(false);
   const [wageMonth, setWageMonth] = useState<Dayjs>(() => dayjs().subtract(1, 'month'));
-  const [wageWorkPlace, setWageWorkPlace] = useState<string | undefined>();
-  const [listWorkPlace, setListWorkPlace] = useState<string | undefined>();
+  const [wageFilter, setWageFilter] = useState<WageListFilter>({});
+  const listFilterRef = useRef<WageListFilter>({});
   const [wageJob, setWageJob] = useState<PayWageExportJob | null>(null);
   const [wageStarting, setWageStarting] = useState(false);
   const [wageDownloading, setWageDownloading] = useState(false);
@@ -133,24 +155,40 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
     stopWagePoll();
     setWageJob(null);
     setWageMonth(dayjs().subtract(1, 'month'));
-    setWageWorkPlace(listWorkPlace);
+    setWageFilter(listFilterRef.current);
     setWageOpen(true);
   };
+
+  const wageFilterText = (() => {
+    const parts: string[] = [];
+    if (wageFilter.employeeName) parts.push(`姓名「${wageFilter.employeeName}」`);
+    if (wageFilter.deptId != null) {
+      parts.push(`部门「${depts.find((item) => item.id === wageFilter.deptId)?.deptName || wageFilter.deptId}」`);
+    }
+    if (wageFilter.postId != null) {
+      parts.push(`岗位「${posts.find((item) => item.id === wageFilter.postId)?.postName || wageFilter.postId}」`);
+    }
+    if (wageFilter.gradeId === 0) {
+      parts.push('未设职级');
+    } else if (wageFilter.gradeId != null) {
+      parts.push(`职级「${grades.find((item) => item.id === wageFilter.gradeId)?.gradeName || wageFilter.gradeId}」`);
+    }
+    if (wageFilter.workPlace) parts.push(`工作地「${wageFilter.workPlace}」`);
+    if (wageFilter.jobStatus === 1) parts.push('在职');
+    else if (wageFilter.jobStatus === 0) parts.push('离职');
+    return parts.length ? parts.join('，') : '未筛选，按当前表格全部员工';
+  })();
 
   const startWageExport = async () => {
     if (!wageMonth) {
       message.warning('请选择生成月份');
       return;
     }
-    if (!wageWorkPlace) {
-      message.warning('请选择工作地后再生成');
-      return;
-    }
     const period = wageMonth.format('YYYY-MM');
     setWageStarting(true);
     stopWagePoll();
     try {
-      const job = await startPayWageExportApi(period, wageWorkPlace);
+      const job = await startPayWageExportApi({ period, ...wageFilter });
       setWageJob(job);
       wagePollRef.current = window.setInterval(() => {
         void (async () => {
@@ -346,7 +384,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         scroll={{ x: 2320 }}
         tableExtraRender={() => (
           <div className='mb-3 text-sm text-neutral-500'>
-            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。生成工资明细按当前工作地筛选结果导出。
+            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。生成工资明细按表格当前筛选结果导出。
           </div>
         )}
         toolBarRender={() => [
@@ -376,7 +414,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         ]}
         request={async (params) => {
           const query = tools.handleSearchParams(params);
-          setListWorkPlace(typeof query.workPlace === 'string' ? query.workPlace : undefined);
+          listFilterRef.current = pickWageFilter(query);
           const { rows, total } = await getPayEmployeeListApi(query);
           return { data: rows, total, success: true };
         }}
@@ -393,9 +431,10 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         destroyOnHidden
       >
         <p className='mb-3 text-sm text-neutral-500'>
-          按模版「工资」表生成指定工作地的在职员工工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。工作地默认带入列表当前筛选，完成后可下载
+          按员工表当前筛选结果生成工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。完成后可下载
           Excel。
         </p>
+        <p className='mb-3 text-sm text-neutral-700'>当前筛选：{wageFilterText}</p>
         <div className='mb-4 flex flex-wrap items-center gap-3'>
           <span>算薪月份</span>
           <DatePicker
@@ -404,16 +443,6 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
             allowClear={false}
             disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
             onChange={(value) => value && setWageMonth(value)}
-          />
-          <span>工作地</span>
-          <Select
-            className='w-28!'
-            allowClear={false}
-            placeholder='请选择'
-            options={WORK_PLACE_OPTIONS}
-            value={wageWorkPlace}
-            disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
-            onChange={(value) => setWageWorkPlace(value)}
           />
           <PermissionButton
             perm='payroll:employee:list'

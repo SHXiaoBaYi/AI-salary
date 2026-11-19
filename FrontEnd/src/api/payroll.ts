@@ -177,12 +177,18 @@ export type PayWageExportJob = {
   fileName?: string;
 };
 
-export function startPayWageExportApi(period: string, workPlace?: string) {
-  return request.post<unknown, PayWageExportJob>(
-    '/payroll/employee/wage-export/start',
-    { period, workPlace: workPlace || undefined },
-    { timeout: 60000 },
-  );
+export type PayWageExportStart = {
+  period: string;
+  employeeName?: string;
+  deptId?: number;
+  postId?: number;
+  gradeId?: number;
+  jobStatus?: number;
+  workPlace?: string;
+};
+
+export function startPayWageExportApi(data: PayWageExportStart) {
+  return request.post<unknown, PayWageExportJob>('/payroll/employee/wage-export/start', data, { timeout: 60000 });
 }
 
 export function getPayWageExportProgressApi(jobId: string) {

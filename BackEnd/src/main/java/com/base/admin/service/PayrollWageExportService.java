@@ -1,6 +1,7 @@
 package com.base.admin.service;
 
 import com.base.admin.common.PayRewardKinds;
+import com.base.admin.domain.dto.PayWageExportDTO;
 import com.base.admin.domain.vo.PayWageExportJobVO;
 import com.base.admin.exception.BusinessException;
 import com.base.admin.service.PayrollDingTalkPullService.PeriodWindow;
@@ -66,17 +67,23 @@ public class PayrollWageExportService {
     });
     private final ConcurrentHashMap<String, Job> jobs = new ConcurrentHashMap<>();
 
-    public PayWageExportJobVO start(String period, String workPlace) {
-        PeriodWindow window = pullService.parsePeriod(period);
-        String place = normalizeWorkPlace(workPlace);
+    public PayWageExportJobVO start(PayWageExportDTO dto) {
+        PeriodWindow window = pullService.parsePeriod(dto.getPeriod());
+        EmpFilter filter = new EmpFilter(
+                blankToNull(dto.getEmployeeName()),
+                dto.getDeptId(),
+                dto.getPostId(),
+                dto.getGradeId(),
+                dto.getJobStatus(),
+                normalizeWorkPlace(dto.getWorkPlace()));
         purgeExpired();
         String jobId = UUID.randomUUID().toString().replace("-", "");
-        Job job = new Job(jobId, window.period(), place);
+        Job job = new Job(jobId, window.period(), filter);
         job.status = "pending";
         job.percent = 0;
         job.message = "排队中";
-        job.fileName = StringUtils.hasText(place)
-                ? "员工工资明细-" + window.period() + "-" + place + ".xlsx"
+        job.fileName = StringUtils.hasText(filter.workPlace())
+                ? "员工工资明细-" + window.period() + "-" + filter.workPlace() + ".xlsx"
                 : "员工工资明细-" + window.period() + ".xlsx";
         jobs.put(jobId, job);
         executor.execute(() -> run(job, window));
@@ -102,12 +109,9 @@ public class PayrollWageExportService {
         job.message = "读取员工与算薪数据";
         Path temp = null;
         try {
-            List<Emp> employees = loadEmployees(job.workPlace);
+            List<Emp> employees = loadEmployees(job.filter);
             if (employees.isEmpty()) {
-                String tip = StringUtils.hasText(job.workPlace)
-                        ? "没有工作地为「" + job.workPlace + "」的在职员工，无法生成工资明细"
-                        : "没有在职员工，无法生成工资明细";
-                throw new BusinessException(tip);
+                throw new BusinessException("当前筛选条件下没有员工，无法生成工资明细");
             }
             Map<Long, Att> attendance = loadAttendance(window.period());
             Map<Long, Map<String, Integer>> rewards = loadRewardCounts(window.period());
@@ -511,7 +515,7 @@ public class PayrollWageExportService {
         sums[col] = sums[col].add(value == null ? BigDecimal.ZERO : new BigDecimal(value.toString()));
     }
 
-    private List<Emp> loadEmployees(String workPlace) {
+    private List<Emp> loadEmployees(EmpFilter filter) {
         StringBuilder sql = new StringBuilder("""
                 SELECT e.id, e.employee_name, e.hire_date, e.grade_id, e.salary_standard,
                        e.amt_post, e.amt_full_attendance, e.amt_social_subsidy, e.amt_housing_subsidy,
@@ -520,12 +524,32 @@ public class PayrollWageExportService {
                 FROM pay_employee e
                 LEFT JOIN pay_dept d ON d.id = e.dept_id AND d.is_active = 1
                 LEFT JOIN pay_post p ON p.id = e.post_id AND p.is_active = 1
-                WHERE e.is_active = 1 AND e.job_status = 1
+                WHERE e.is_active = 1
                 """);
         List<Object> args = new ArrayList<>();
-        if (StringUtils.hasText(workPlace)) {
+        if (StringUtils.hasText(filter.employeeName())) {
+            sql.append(" AND e.employee_name LIKE ?");
+            args.add("%" + filter.employeeName().trim() + "%");
+        }
+        if (filter.deptId() != null) {
+            sql.append(" AND e.dept_id = ?");
+            args.add(filter.deptId());
+        }
+        if (filter.postId() != null) {
+            sql.append(" AND e.post_id = ?");
+            args.add(filter.postId());
+        }
+        if (filter.gradeId() != null) {
+            sql.append(" AND e.grade_id = ?");
+            args.add(filter.gradeId());
+        }
+        if (filter.jobStatus() != null) {
+            sql.append(" AND e.job_status = ?");
+            args.add(filter.jobStatus());
+        }
+        if (StringUtils.hasText(filter.workPlace())) {
             sql.append(" AND e.work_place = ?");
-            args.add(workPlace);
+            args.add(filter.workPlace());
         }
         sql.append(" ORDER BY d.sort_order, d.id, e.id");
         return jdbc.query(sql.toString(), (rs, row) -> {
@@ -796,6 +820,10 @@ public class PayrollWageExportService {
         return StringUtils.hasText(value) ? value.trim() : "";
     }
 
+    private static String blankToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
     @PreDestroy
     public void shutdown() {
         executor.shutdownNow();
@@ -811,10 +839,19 @@ public class PayrollWageExportService {
         jobs.clear();
     }
 
+    private record EmpFilter(
+            String employeeName,
+            Long deptId,
+            Long postId,
+            Long gradeId,
+            Integer jobStatus,
+            String workPlace) {
+    }
+
     private static final class Job {
         private final String jobId;
         private final String period;
-        private final String workPlace;
+        private final EmpFilter filter;
         private volatile String status;
         private volatile int percent;
         private volatile String message;
@@ -822,10 +859,10 @@ public class PayrollWageExportService {
         private volatile Path file;
         private volatile long expireAt;
 
-        private Job(String jobId, String period, String workPlace) {
+        private Job(String jobId, String period, EmpFilter filter) {
             this.jobId = jobId;
             this.period = period;
-            this.workPlace = workPlace == null ? "" : workPlace;
+            this.filter = filter;
         }
     }
 

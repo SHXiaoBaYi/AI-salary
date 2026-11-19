@@ -72,7 +72,7 @@ public class PayrollEmployeeController {
     @RequiresPermission("payroll:employee:list")
     @Log(title = "生成工资明细", businessType = 5)
     public Result<PayWageExportJobVO> startWageExport(@Valid @RequestBody PayWageExportDTO dto) {
-        return Result.ok(wageExportService.start(dto.getPeriod(), dto.getWorkPlace()));
+        return Result.ok(wageExportService.start(dto));
     }
 
     @Operation(summary = "查询工资明细生成进度")
