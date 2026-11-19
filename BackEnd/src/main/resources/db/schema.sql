@@ -340,6 +340,7 @@ CREATE TABLE IF NOT EXISTS pay_employee (
   bank_account        VARCHAR(40)   NOT NULL DEFAULT ''     COMMENT '银行卡号',
   bank_name           VARCHAR(80)   NOT NULL DEFAULT ''     COMMENT '开户行',
   job_status          TINYINT       NOT NULL DEFAULT 1      COMMENT '1在职 0离职',
+  work_place          VARCHAR(10)   NOT NULL DEFAULT ''     COMMENT '工作地：上海/新疆',
   hukou_type          VARCHAR(10)   NOT NULL DEFAULT ''     COMMENT '户口性质：城镇/农村',
   social_base         DECIMAL(12,2) NULL                    COMMENT '社保缴费基数',
   social_account      VARCHAR(40)   NOT NULL DEFAULT ''     COMMENT '个人社保账号',
@@ -353,6 +354,7 @@ CREATE TABLE IF NOT EXISTS pay_employee (
   KEY idx_dept (dept_id),
   KEY idx_post (post_id),
   KEY idx_grade (grade_id),
+  KEY idx_work_place (work_place),
   KEY idx_ding_user (dingtalk_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='算薪员工';
 

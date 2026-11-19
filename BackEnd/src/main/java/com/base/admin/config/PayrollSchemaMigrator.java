@@ -103,6 +103,9 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         ensureIndex("pay_employee", "idx_ding_user", "ALTER TABLE pay_employee ADD INDEX idx_ding_user (dingtalk_user_id)");
         ensureColumn("pay_employee", "hukou_type",
                 "ALTER TABLE pay_employee ADD COLUMN hukou_type VARCHAR(10) NOT NULL DEFAULT '' COMMENT '户口性质：城镇/农村' AFTER job_status");
+        ensureColumn("pay_employee", "work_place",
+                "ALTER TABLE pay_employee ADD COLUMN work_place VARCHAR(10) NOT NULL DEFAULT '' COMMENT '工作地：上海/新疆' AFTER job_status");
+        ensureIndex("pay_employee", "idx_work_place", "ALTER TABLE pay_employee ADD INDEX idx_work_place (work_place)");
         ensureColumn("pay_employee", "social_base",
                 "ALTER TABLE pay_employee ADD COLUMN social_base DECIMAL(12,2) NULL COMMENT '社保缴费基数' AFTER hukou_type");
         ensureColumn("pay_employee", "social_account",

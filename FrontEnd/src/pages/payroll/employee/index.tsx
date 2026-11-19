@@ -25,6 +25,11 @@ import {
   type PayWageExportJob,
 } from '@/api/payroll';
 
+const WORK_PLACE_OPTIONS = [
+  { value: '上海', label: '上海' },
+  { value: '新疆', label: '新疆' },
+];
+
 const SALARY_ITEMS: { name: keyof PayEmployee; label: string }[] = [
   { name: 'amtPost', label: '岗位工资' },
   { name: 'amtFullAttendance', label: '全勤工资' },
@@ -53,6 +58,8 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   const [syncing, setSyncing] = useState(false);
   const [wageOpen, setWageOpen] = useState(false);
   const [wageMonth, setWageMonth] = useState<Dayjs>(() => dayjs().subtract(1, 'month'));
+  const [wageWorkPlace, setWageWorkPlace] = useState<string | undefined>();
+  const [listWorkPlace, setListWorkPlace] = useState<string | undefined>();
   const [wageJob, setWageJob] = useState<PayWageExportJob | null>(null);
   const [wageStarting, setWageStarting] = useState(false);
   const [wageDownloading, setWageDownloading] = useState(false);
@@ -93,8 +100,9 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
             ...row,
             hireDate: row.hireDate ? dayjs(row.hireDate) : undefined,
             jobStatus: row.jobStatus === 1,
+            workPlace: row.workPlace || undefined,
           }
-        : { jobStatus: true, ...ZERO_SALARY },
+        : { jobStatus: true, workPlace: '上海', ...ZERO_SALARY },
     );
     setOpen(true);
   };
@@ -125,6 +133,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
     stopWagePoll();
     setWageJob(null);
     setWageMonth(dayjs().subtract(1, 'month'));
+    setWageWorkPlace(listWorkPlace);
     setWageOpen(true);
   };
 
@@ -133,11 +142,15 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
       message.warning('请选择生成月份');
       return;
     }
+    if (!wageWorkPlace) {
+      message.warning('请选择工作地后再生成');
+      return;
+    }
     const period = wageMonth.format('YYYY-MM');
     setWageStarting(true);
     stopWagePoll();
     try {
-      const job = await startPayWageExportApi(period);
+      const job = await startPayWageExportApi(period, wageWorkPlace);
       setWageJob(job);
       wagePollRef.current = window.setInterval(() => {
         void (async () => {
@@ -201,6 +214,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         bankAccount: values.bankAccount,
         bankName: values.bankName,
         jobStatus: values.jobStatus ? 1 : 0,
+        workPlace: values.workPlace,
         hukouType: values.hukouType || '',
         socialBase: values.socialBase ?? null,
         socialAccount: values.socialAccount,
@@ -269,6 +283,17 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
       },
       render: (_, row) => (row.gradeName ? row.gradeName : <Tag color='warning'>未设</Tag>),
     },
+    {
+      title: '工作地',
+      dataIndex: 'workPlace',
+      width: 100,
+      valueType: 'select',
+      fieldProps: {
+        allowClear: true,
+        options: WORK_PLACE_OPTIONS,
+      },
+      render: (_, row) => row.workPlace || <Tag color='warning'>未设</Tag>,
+    },
     { title: '入职时间', dataIndex: 'hireDate', width: 120, search: false },
     {
       title: '底薪合计',
@@ -318,10 +343,10 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         actionRef={actionRef}
         headerTitle='员工管理'
         columns={columns}
-        scroll={{ x: 2220 }}
+        scroll={{ x: 2320 }}
         tableExtraRender={() => (
           <div className='mb-3 text-sm text-neutral-500'>
-            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。
+            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。生成工资明细按当前工作地筛选结果导出。
           </div>
         )}
         toolBarRender={() => [
@@ -350,7 +375,9 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
           </PermissionButton>,
         ]}
         request={async (params) => {
-          const { rows, total } = await getPayEmployeeListApi(tools.handleSearchParams(params));
+          const query = tools.handleSearchParams(params);
+          setListWorkPlace(typeof query.workPlace === 'string' ? query.workPlace : undefined);
+          const { rows, total } = await getPayEmployeeListApi(query);
           return { data: rows, total, success: true };
         }}
       />
@@ -366,7 +393,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         destroyOnHidden
       >
         <p className='mb-3 text-sm text-neutral-500'>
-          按模版「工资」表生成在职员工工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。数据较多时显示进度，完成后可下载
+          按模版「工资」表生成指定工作地的在职员工工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。工作地默认带入列表当前筛选，完成后可下载
           Excel。
         </p>
         <div className='mb-4 flex flex-wrap items-center gap-3'>
@@ -377,6 +404,16 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
             allowClear={false}
             disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
             onChange={(value) => value && setWageMonth(value)}
+          />
+          <span>工作地</span>
+          <Select
+            className='w-28!'
+            allowClear={false}
+            placeholder='请选择'
+            options={WORK_PLACE_OPTIONS}
+            value={wageWorkPlace}
+            disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
+            onChange={(value) => setWageWorkPlace(value)}
           />
           <PermissionButton
             perm='payroll:employee:list'
@@ -471,6 +508,16 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
             rules={[{ required: true, message: '请选择入职时间' }]}
           >
             <DatePicker className='w-full!' />
+          </Form.Item>
+          <Form.Item
+            name='workPlace'
+            label='工作地'
+            rules={[{ required: true, message: '请选择工作地' }]}
+          >
+            <Select
+              options={WORK_PLACE_OPTIONS}
+              placeholder='上海 / 新疆'
+            />
           </Form.Item>
 
           <div className='col-span-2 mb-1 text-sm font-medium text-neutral-700'>底薪构成</div>

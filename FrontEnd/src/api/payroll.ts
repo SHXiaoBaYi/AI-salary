@@ -66,6 +66,7 @@ export type PayEmployee = {
   bankAccount?: string;
   bankName?: string;
   jobStatus: number;
+  workPlace?: string;
   hukouType?: string;
   socialBase?: number | null;
   socialAccount?: string;
@@ -176,8 +177,12 @@ export type PayWageExportJob = {
   fileName?: string;
 };
 
-export function startPayWageExportApi(period: string) {
-  return request.post<unknown, PayWageExportJob>('/payroll/employee/wage-export/start', { period }, { timeout: 60000 });
+export function startPayWageExportApi(period: string, workPlace?: string) {
+  return request.post<unknown, PayWageExportJob>(
+    '/payroll/employee/wage-export/start',
+    { period, workPlace: workPlace || undefined },
+    { timeout: 60000 },
+  );
 }
 
 export function getPayWageExportProgressApi(jobId: string) {

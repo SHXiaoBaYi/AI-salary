@@ -84,6 +84,9 @@ public class PayEmployeeVO {
     @Schema(description = "1在职 0离职")
     private Integer jobStatus;
 
+    @Schema(description = "工作地：上海/新疆")
+    private String workPlace;
+
     @Schema(description = "户口性质：城镇/农村")
     private String hukouType;
 
