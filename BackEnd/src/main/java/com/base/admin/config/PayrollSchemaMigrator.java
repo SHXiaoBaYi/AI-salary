@@ -130,7 +130,7 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 (400, '高管', 0, 2, '/exec', '', 'M', '', 'CrownOutlined', 0, 0, '看工资明细和主播提成结果', 1),
                 (410, '财务助理', 0, 3, '/finance', '', 'M', '', 'WalletOutlined', 0, 0, '维护算薪资料、提成标准，并做周核算', 1),
                 (420, '运营助理', 0, 4, '/ops', '', 'M', '', 'VideoCameraOutlined', 0, 0, '维护主播、订单、退款、排班和粉丝', 1),
-                (401, '工资明细', 400, 1, 'exec/wage', 'payroll/employee/index', 'C', 'payroll:employee:list', 'PayCircleOutlined', 0, 0, '按当前筛选生成工资明细', 1),
+                (401, '工资明细', 400, 1, 'payroll/wage', 'payroll/wage/index', 'C', 'payroll:employee:list', 'PayCircleOutlined', 0, 0, '按当前筛选生成工资明细，不维护员工档案', 1),
                 (201, '员工管理', 410, 1, 'payroll/employee', 'payroll/employee/index', 'C', 'payroll:employee:list', 'TeamOutlined', 0, 0, '', 1),
                 (202, '员工编辑', 201, 1, '', '', 'F', 'payroll:employee:edit', '#', 0, 0, '', 1),
                 (207, '部门', 410, 2, 'payroll/dept', 'payroll/dept/index', 'C', 'payroll:base:list', 'BankOutlined', 0, 0, '维护部门', 1),
@@ -936,6 +936,11 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 WHERE role_id = 1 AND (menu_id BETWEEN 301 AND 317 OR menu_id = 402)
                 """);
         jdbc.update("UPDATE sys_menu SET is_active = 0 WHERE menu_id IN (200, 300)");
+        jdbc.update("""
+                UPDATE sys_menu
+                SET path = 'payroll/wage', component = 'payroll/wage/index', perms = 'payroll:employee:list'
+                WHERE menu_id = 401
+                """);
         seedWorkRoles();
         log.info("主播提成标准、渠道阶梯与菜单已同步");
     }

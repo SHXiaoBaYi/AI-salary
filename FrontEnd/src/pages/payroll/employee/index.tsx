@@ -1,5 +1,4 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import type { ActionType, ProColumnType } from '@ant-design/pro-components';
 import { App, DatePicker, Form, Input, InputNumber, Modal, Progress, Select, Tag } from 'antd';
 import dayjs from 'dayjs';
@@ -69,9 +68,9 @@ function pickWageFilter(query: Record<string, unknown>): WageListFilter {
   };
 }
 
-const PayrollEmployeePage = memo(function PayrollEmployeePage() {
+export const PayrollEmployeePage = memo(function PayrollEmployeePage({ mode }: { mode: 'wage' | 'maintain' }) {
   const { message, modal } = App.useApp();
-  const wageView = useLocation().pathname.replace(/\/$/, '').endsWith('/exec/wage');
+  const wageMode = mode === 'wage';
   const actionRef = useRef<ActionType>(null);
   const [depts, setDepts] = useState<PayDept[]>([]);
   const [posts, setPosts] = useState<PayPost[]>([]);
@@ -268,29 +267,33 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   };
 
   const columns: ProColumnType<PayEmployee>[] = [
-    {
-      title: '操作',
-      valueType: 'option',
-      width: 140,
-      render: (_, row) => (
-        <ActionButtons
-          items={[
-            { key: 'edit', label: '编辑', perm: 'payroll:employee:edit', onClick: () => openForm(row) },
-            {
-              key: 'delete',
-              label: '删除',
-              perm: 'payroll:employee:edit',
-              confirmTitle: '删除该员工？',
-              onClick: async () => {
-                await deletePayEmployeeApi(row.id);
-                message.success('已删除');
-                actionRef.current?.reload();
-              },
-            },
-          ]}
-        />
-      ),
-    },
+    ...(wageMode
+      ? []
+      : [
+          {
+            title: '操作',
+            valueType: 'option' as const,
+            width: 140,
+            render: (_: unknown, row: PayEmployee) => (
+              <ActionButtons
+                items={[
+                  { key: 'edit', label: '编辑', perm: 'payroll:employee:edit', onClick: () => openForm(row) },
+                  {
+                    key: 'delete',
+                    label: '删除',
+                    perm: 'payroll:employee:edit',
+                    confirmTitle: '删除该员工？',
+                    onClick: async () => {
+                      await deletePayEmployeeApi(row.id);
+                      message.success('已删除');
+                      actionRef.current?.reload();
+                    },
+                  },
+                ]}
+              />
+            ),
+          },
+        ]),
     { title: '工号', dataIndex: 'employeeNo', width: 110, search: false },
     { title: '姓名', dataIndex: 'employeeName', width: 100 },
     {
@@ -381,39 +384,47 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
       <BaseProTable<PayEmployee>
         rowKey='id'
         actionRef={actionRef}
-        headerTitle={wageView ? '工资明细' : '员工管理'}
+        headerTitle={wageMode ? '工资明细' : '员工管理'}
         columns={columns}
-        scroll={{ x: 2320 }}
+        scroll={{ x: wageMode ? 2180 : 2320 }}
         tableExtraRender={() => (
           <div className='mb-3 text-sm text-neutral-500'>
-            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。生成工资明细按表格当前筛选结果导出。
+            {wageMode
+              ? '按当前筛选条件生成工资明细。可筛姓名、部门、岗位、职级、工作地、在职状态，再选择算薪月份导出。这里不修改员工档案。'
+              : '维护员工档案。底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。'}
           </div>
         )}
-        toolBarRender={() => [
-          <PermissionButton
-            key='wage'
-            perm='payroll:employee:list'
-            onClick={openWageExport}
-          >
-            生成工资明细
-          </PermissionButton>,
-          <PermissionButton
-            key='sync'
-            perm='payroll:employee:edit'
-            loading={syncing}
-            onClick={syncDingTalk}
-          >
-            从钉钉同步
-          </PermissionButton>,
-          <PermissionButton
-            key='add'
-            perm='payroll:employee:edit'
-            type='primary'
-            onClick={() => openForm()}
-          >
-            新增员工
-          </PermissionButton>,
-        ]}
+        toolBarRender={() =>
+          wageMode
+            ? [
+                <PermissionButton
+                  key='wage'
+                  perm='payroll:employee:list'
+                  type='primary'
+                  onClick={openWageExport}
+                >
+                  生成工资明细
+                </PermissionButton>,
+              ]
+            : [
+                <PermissionButton
+                  key='sync'
+                  perm='payroll:employee:edit'
+                  loading={syncing}
+                  onClick={syncDingTalk}
+                >
+                  从钉钉同步
+                </PermissionButton>,
+                <PermissionButton
+                  key='add'
+                  perm='payroll:employee:edit'
+                  type='primary'
+                  onClick={() => openForm()}
+                >
+                  新增员工
+                </PermissionButton>,
+              ]
+        }
         request={async (params) => {
           const query = tools.handleSearchParams(params);
           listFilterRef.current = pickWageFilter(query);
@@ -422,224 +433,230 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         }}
       />
 
-      <Modal
-        title='生成工资明细'
-        open={wageOpen}
-        onCancel={() => {
-          stopWagePoll();
-          setWageOpen(false);
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <p className='mb-3 text-sm text-neutral-500'>
-          按员工表当前筛选结果生成工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。完成后可下载
-          Excel。
-        </p>
-        <p className='mb-3 text-sm text-neutral-700'>当前筛选：{wageFilterText}</p>
-        <div className='mb-4 flex flex-wrap items-center gap-3'>
-          <span>算薪月份</span>
-          <DatePicker
-            picker='month'
-            value={wageMonth}
-            allowClear={false}
-            disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
-            onChange={(value) => value && setWageMonth(value)}
-          />
-          <PermissionButton
-            perm='payroll:employee:list'
-            type='primary'
-            loading={wageStarting}
-            disabled={wageJob?.status === 'pending' || wageJob?.status === 'running'}
-            onClick={() => void startWageExport()}
-          >
-            开始生成
-          </PermissionButton>
-          {wageJob?.status === 'done' ? (
+      {wageMode ? (
+        <Modal
+          title='生成工资明细'
+          open={wageOpen}
+          onCancel={() => {
+            stopWagePoll();
+            setWageOpen(false);
+          }}
+          footer={null}
+          destroyOnHidden
+        >
+          <p className='mb-3 text-sm text-neutral-500'>
+            按员工表当前筛选结果生成工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。完成后可下载
+            Excel。
+          </p>
+          <p className='mb-3 text-sm text-neutral-700'>当前筛选：{wageFilterText}</p>
+          <div className='mb-4 flex flex-wrap items-center gap-3'>
+            <span>算薪月份</span>
+            <DatePicker
+              picker='month'
+              value={wageMonth}
+              allowClear={false}
+              disabled={wageStarting || wageJob?.status === 'pending' || wageJob?.status === 'running'}
+              onChange={(value) => value && setWageMonth(value)}
+            />
             <PermissionButton
               perm='payroll:employee:list'
-              loading={wageDownloading}
-              onClick={() => void downloadWage()}
+              type='primary'
+              loading={wageStarting}
+              disabled={wageJob?.status === 'pending' || wageJob?.status === 'running'}
+              onClick={() => void startWageExport()}
             >
-              下载 Excel
+              开始生成
             </PermissionButton>
-          ) : null}
-        </div>
-        {wageJob ? (
-          <div className='space-y-2'>
-            <Progress
-              percent={wageJob.percent ?? 0}
-              status={wageJob.status === 'failed' ? 'exception' : wageJob.status === 'done' ? 'success' : 'active'}
-            />
-            <div className='text-sm text-neutral-500'>{wageJob.message}</div>
+            {wageJob?.status === 'done' ? (
+              <PermissionButton
+                perm='payroll:employee:list'
+                loading={wageDownloading}
+                onClick={() => void downloadWage()}
+              >
+                下载 Excel
+              </PermissionButton>
+            ) : null}
           </div>
-        ) : null}
-      </Modal>
+          {wageJob ? (
+            <div className='space-y-2'>
+              <Progress
+                percent={wageJob.percent ?? 0}
+                status={wageJob.status === 'failed' ? 'exception' : wageJob.status === 'done' ? 'success' : 'active'}
+              />
+              <div className='text-sm text-neutral-500'>{wageJob.message}</div>
+            </div>
+          ) : null}
+        </Modal>
+      ) : null}
 
-      <Modal
-        title={editing ? '编辑员工' : '新增员工'}
-        open={open}
-        width={760}
-        confirmLoading={saving}
-        onOk={() => void handleSave()}
-        onCancel={() => setOpen(false)}
-        destroyOnHidden
-      >
-        <Form
-          form={form}
-          layout='vertical'
-          className='grid grid-cols-2 gap-x-4'
+      {!wageMode ? (
+        <Modal
+          title={editing ? '编辑员工' : '新增员工'}
+          open={open}
+          width={760}
+          confirmLoading={saving}
+          onOk={() => void handleSave()}
+          onCancel={() => setOpen(false)}
+          destroyOnHidden
         >
-          <Form.Item
-            name='employeeName'
-            label='姓名'
-            rules={[{ required: true, message: '请填写姓名' }]}
+          <Form
+            form={form}
+            layout='vertical'
+            className='grid grid-cols-2 gap-x-4'
           >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='employeeNo'
-            label='工号'
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='deptId'
-            label='部门'
-            rules={[{ required: true, message: '请选择部门' }]}
-          >
-            <Select
-              options={activeDepts.map((item) => ({ value: item.id, label: item.deptName }))}
-              placeholder='请先在部门页维护'
-            />
-          </Form.Item>
-          <Form.Item
-            name='postId'
-            label='岗位'
-            rules={[{ required: true, message: '请选择岗位' }]}
-          >
-            <Select
-              options={activePosts.map((item) => ({ value: item.id, label: item.postName }))}
-              placeholder='请先在岗位页维护'
-            />
-          </Form.Item>
-          <Form.Item
-            name='gradeId'
-            label='职级'
-            rules={[{ required: true, message: '请选择职级' }]}
-          >
-            <Select
-              options={activeGrades.map((item) => ({ value: item.id, label: item.gradeName }))}
-              placeholder='请先在职级页维护'
-            />
-          </Form.Item>
-          <Form.Item
-            name='hireDate'
-            label='入职时间'
-            rules={[{ required: true, message: '请选择入职时间' }]}
-          >
-            <DatePicker className='w-full!' />
-          </Form.Item>
-          <Form.Item
-            name='workPlace'
-            label='工作地'
-            rules={[{ required: true, message: '请选择工作地' }]}
-          >
-            <Select
-              options={WORK_PLACE_OPTIONS}
-              placeholder='上海 / 新疆'
-            />
-          </Form.Item>
-
-          <div className='col-span-2 mb-1 text-sm font-medium text-neutral-700'>底薪构成</div>
-          {SALARY_ITEMS.map((item) => (
             <Form.Item
-              key={item.name}
-              name={item.name}
-              label={item.label}
-              rules={[{ required: true, message: `请填写${item.label}` }]}
+              name='employeeName'
+              label='姓名'
+              rules={[{ required: true, message: '请填写姓名' }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='employeeNo'
+              label='工号'
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='deptId'
+              label='部门'
+              rules={[{ required: true, message: '请选择部门' }]}
+            >
+              <Select
+                options={activeDepts.map((item) => ({ value: item.id, label: item.deptName }))}
+                placeholder='请先在部门页维护'
+              />
+            </Form.Item>
+            <Form.Item
+              name='postId'
+              label='岗位'
+              rules={[{ required: true, message: '请选择岗位' }]}
+            >
+              <Select
+                options={activePosts.map((item) => ({ value: item.id, label: item.postName }))}
+                placeholder='请先在岗位页维护'
+              />
+            </Form.Item>
+            <Form.Item
+              name='gradeId'
+              label='职级'
+              rules={[{ required: true, message: '请选择职级' }]}
+            >
+              <Select
+                options={activeGrades.map((item) => ({ value: item.id, label: item.gradeName }))}
+                placeholder='请先在职级页维护'
+              />
+            </Form.Item>
+            <Form.Item
+              name='hireDate'
+              label='入职时间'
+              rules={[{ required: true, message: '请选择入职时间' }]}
+            >
+              <DatePicker className='w-full!' />
+            </Form.Item>
+            <Form.Item
+              name='workPlace'
+              label='工作地'
+              rules={[{ required: true, message: '请选择工作地' }]}
+            >
+              <Select
+                options={WORK_PLACE_OPTIONS}
+                placeholder='上海 / 新疆'
+              />
+            </Form.Item>
+
+            <div className='col-span-2 mb-1 text-sm font-medium text-neutral-700'>底薪构成</div>
+            {SALARY_ITEMS.map((item) => (
+              <Form.Item
+                key={item.name}
+                name={item.name}
+                label={item.label}
+                rules={[{ required: true, message: `请填写${item.label}` }]}
+              >
+                <InputNumber
+                  min={0}
+                  precision={2}
+                  className='w-full!'
+                  addonAfter='元'
+                />
+              </Form.Item>
+            ))}
+            <div className='col-span-2 -mt-2 mb-3 text-sm text-neutral-500'>
+              底薪合计（工资标准）：
+              <span className='ml-1 font-medium text-neutral-800'>{salaryTotal.toFixed(2)}</span> 元
+            </div>
+
+            <Form.Item
+              name='phone'
+              label='手机号'
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='idCard'
+              label='身份证号'
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='bankAccount'
+              label='银行卡号'
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='bankName'
+              label='开户行'
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='hukouType'
+              label='户口性质'
+            >
+              <Select
+                allowClear
+                placeholder='请选择'
+                options={[
+                  { value: '城镇', label: '城镇' },
+                  { value: '农村', label: '农村' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item
+              name='socialBase'
+              label='缴费基数'
             >
               <InputNumber
                 min={0}
                 precision={2}
                 className='w-full!'
-                addonAfter='元'
               />
             </Form.Item>
-          ))}
-          <div className='col-span-2 -mt-2 mb-3 text-sm text-neutral-500'>
-            底薪合计（工资标准）：
-            <span className='ml-1 font-medium text-neutral-800'>{salaryTotal.toFixed(2)}</span> 元
-          </div>
-
-          <Form.Item
-            name='phone'
-            label='手机号'
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='idCard'
-            label='身份证号'
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='bankAccount'
-            label='银行卡号'
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='bankName'
-            label='开户行'
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='hukouType'
-            label='户口性质'
-          >
-            <Select
-              allowClear
-              placeholder='请选择'
-              options={[
-                { value: '城镇', label: '城镇' },
-                { value: '农村', label: '农村' },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            name='socialBase'
-            label='缴费基数'
-          >
-            <InputNumber
-              min={0}
-              precision={2}
-              className='w-full!'
-            />
-          </Form.Item>
-          <Form.Item
-            name='socialAccount'
-            label='个人社保账号'
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name='jobStatus'
-            label='在职状态'
-          >
-            <Select
-              options={[
-                { value: true, label: '在职' },
-                { value: false, label: '离职' },
-              ]}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+            <Form.Item
+              name='socialAccount'
+              label='个人社保账号'
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name='jobStatus'
+              label='在职状态'
+            >
+              <Select
+                options={[
+                  { value: true, label: '在职' },
+                  { value: false, label: '离职' },
+                ]}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+      ) : null}
     </>
   );
 });
 
-export default PayrollEmployeePage;
+export default function EmployeeManagePage() {
+  return <PayrollEmployeePage mode='maintain' />;
+}
