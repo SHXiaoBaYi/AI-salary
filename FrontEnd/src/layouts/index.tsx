@@ -12,7 +12,7 @@ import type { MenuTree } from '@/types/menu';
 import avatarPng from '@/assets/avatar.png';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import { ExternalLinkProvider } from '@/components/ExternalLinkDrawer';
-import { firstMenuLeafPath, resolveMenuFullPath } from '@/utils/menuPath';
+import { firstMenuLeafPath, pageRouteFromMenu, resolveMenuFullPath } from '@/utils/menuPath';
 import { withBase } from '@/utils/basePath';
 
 function convertMenusToRoute(menus: MenuTree[], parentPath = ''): any[] {
@@ -25,7 +25,8 @@ function convertMenusToRoute(menus: MenuTree[], parentPath = ''): any[] {
     // 分组目录 path 含 / 时，子节点仍按原父级解析；顶层目录按其 fullPath
     const isGroupingOnly = clean.includes('/') && !!parentPath;
     const childParent = isGroupingOnly ? parentPath : fullPath;
-    const leafPath = `/${clean.includes('/') ? clean : fullPath}`;
+    const pagePath = !hasChildren ? pageRouteFromMenu(item) : null;
+    const leafPath = pagePath ? `/${pagePath}` : `/${clean.includes('/') ? clean : fullPath}`;
 
     return {
       // ProLayout 用 path/key 做 React key；目录必须有唯一 key，避免多个 undefined → ``

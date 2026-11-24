@@ -22,21 +22,27 @@ export function toMenuRelativePath(fullPath: string, parentFullPath = ''): strin
   return fullPath;
 }
 
+/**
+ * 页面地址以组件为准（payroll/employee/index → payroll/employee）。
+ * 菜单换上级目录时不再把这段地址拼到新目录后面。
+ */
+export function pageRouteFromMenu(menu: { path?: string; component?: string; menuType?: string }): string | null {
+  if (menu.menuType === 'M' || menu.menuType === 'F') return null;
+  const componentPath = (menu.component || '').replace(/^\//, '').replace(/\/index$/, '');
+  if (componentPath && componentPath !== '#') return componentPath;
+  const path = (menu.path || '').replace(/^\//, '');
+  return path || null;
+}
+
 /** 登录后的默认页：当前角色侧栏里的第一个叶子菜单。 */
-export function firstMenuLeafPath(menus: MenuTree[] | undefined, parentPath = ''): string | null {
+export function firstMenuLeafPath(menus: MenuTree[] | undefined): string | null {
   for (const menu of menus || []) {
-    const clean = (menu.path || '').replace(/^\//, '');
-    const hasChildren = !!menu.children?.length;
-    const fullPath = resolveMenuFullPath(menu.path, parentPath);
-    const isGroupingOnly = clean.includes('/') && !!parentPath;
-    const childParent = isGroupingOnly ? parentPath : fullPath;
-    if (hasChildren) {
-      const nested = firstMenuLeafPath(menu.children, childParent);
+    const routePath = pageRouteFromMenu(menu);
+    if (routePath) return `/${routePath}`;
+    if (menu.children?.length) {
+      const nested = firstMenuLeafPath(menu.children);
       if (nested) return nested;
-      continue;
     }
-    if (!clean || menu.menuType === 'F') continue;
-    return `/${clean.includes('/') ? clean : fullPath}`;
   }
   return null;
 }

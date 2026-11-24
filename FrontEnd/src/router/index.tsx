@@ -8,7 +8,7 @@ import type { MenuTree } from '@/types/menu';
 import { PageLoading } from '@ant-design/pro-components';
 import { RouteErrorPage } from '@/components/PageErrorBoundary';
 import { getRouterBasename } from '@/utils/basePath';
-import { firstMenuLeafPath, resolveMenuFullPath, toMenuRelativePath } from '@/utils/menuPath';
+import { firstMenuLeafPath, pageRouteFromMenu } from '@/utils/menuPath';
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PagePlaceholder() {
@@ -41,60 +41,27 @@ function withSuspense(Component: LazyExoticComponent<any>) {
   );
 }
 
-function isForeignAbsolutePath(menuPath: string | undefined, parentFullPath: string) {
-  const clean = (menuPath || '').replace(/^\//, '');
-  if (!parentFullPath || !clean.includes('/')) return false;
-  return clean !== parentFullPath && !clean.startsWith(parentFullPath + '/');
-}
-
-function buildDynamicRoutes(menus: MenuTree[], parentPath = ''): any[] {
-  if (!menus || !Array.isArray(menus)) return [];
+function collectPageRoutes(menus: MenuTree[]): any[] {
+  const seen = new Set<string>();
   const routes: any[] = [];
 
-  for (const menu of menus) {
-    if (!menu.path) continue;
-
-    const clean = menu.path.replace(/^\//, '');
-    const fullPath = resolveMenuFullPath(menu.path, parentPath);
-    const relativePath = toMenuRelativePath(fullPath, parentPath);
-    const elementKey = '/' + fullPath;
-    const hasComponent = !!componentMap[elementKey];
-    const hasChildren = !!(menu.children && menu.children.length > 0);
-    const isDir = menu.menuType === 'M' || (!hasComponent && hasChildren);
-
-    if (isDir && hasChildren) {
-      // 叶子 path 含 / 且不属于当前父级时，侧栏仍打开原路径，路由挂在原父级。
-      const foreign = (menu.children || []).filter((child) => isForeignAbsolutePath(child.path, fullPath));
-      const own = (menu.children || []).filter((child) => !isForeignAbsolutePath(child.path, fullPath));
-      if (foreign.length) {
-        routes.push(...buildDynamicRoutes(foreign, parentPath));
+  const walk = (nodes?: MenuTree[]) => {
+    for (const menu of nodes || []) {
+      const routePath = pageRouteFromMenu(menu);
+      const elementKey = routePath ? `/${routePath}` : '';
+      if (routePath && !seen.has(elementKey)) {
+        seen.add(elementKey);
+        routes.push({
+          path: routePath,
+          element: componentMap[elementKey] ? withSuspense(componentMap[elementKey]) : <PagePlaceholder />,
+          errorElement: <RouteErrorPage />,
+        });
       }
-      if (!own.length) {
-        continue;
-      }
-      // 中间分组目录（path 含 /）：扁平挂到当前父级，不改变叶子 URL
-      // 顶层目录（如 system）：保留一层 layout 路由
-      const isGroupingOnly = clean.includes('/') || (!!parentPath && !clean.startsWith(parentPath));
-      if (isGroupingOnly) {
-        routes.push(...buildDynamicRoutes(own, parentPath));
-        continue;
-      }
-      routes.push({
-        path: relativePath,
-        errorElement: <RouteErrorPage />,
-        children: buildDynamicRoutes(own, fullPath),
-      });
-      continue;
+      if (menu.children?.length) walk(menu.children);
     }
+  };
 
-    routes.push({
-      path: relativePath,
-      element: hasComponent ? withSuspense(componentMap[elementKey]) : <PagePlaceholder />,
-      errorElement: <RouteErrorPage />,
-      children: hasChildren ? buildDynamicRoutes(menu.children, fullPath) : undefined,
-    });
-  }
-
+  walk(menus);
   return routes;
 }
 
@@ -124,7 +91,7 @@ export function createAppRouter(menus: MenuTree[], isLoggedIn: boolean) {
     );
   }
 
-  const dynamicRoutes = buildDynamicRoutes(menus);
+  const dynamicRoutes = collectPageRoutes(menus);
 
   return createBrowserRouter(
     [

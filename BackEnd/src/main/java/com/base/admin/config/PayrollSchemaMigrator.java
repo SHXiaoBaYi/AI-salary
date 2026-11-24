@@ -156,19 +156,12 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 (217, '计薪天数', 410, 12, 'payroll/calendar', 'payroll/calendar/index', 'C', 'payroll:calendar:list', 'ScheduleOutlined', 0, 0, '按国务院放假安排生成，可改休息出勤计薪', 1),
                 (218, '计薪天数编辑', 217, 1, '', '', 'F', 'payroll:calendar:edit', '#', 0, 0, '', 1)
                 ON DUPLICATE KEY UPDATE
-                  menu_name = VALUES(menu_name),
-                  parent_id = VALUES(parent_id),
-                  sort_order = VALUES(sort_order),
-                  path = VALUES(path),
                   component = VALUES(component),
                   menu_type = VALUES(menu_type),
                   perms = VALUES(perms),
-                  icon = VALUES(icon),
-                  visible = 0,
-                  status = 0,
-                  remark = VALUES(remark),
                   is_active = 1
                 """);
+        // 名称、上级目录、排序和 path 以库里手工调整为准，启动时不覆盖。
         // 发版被旧包冲掉后，菜单行可能还在但角色授权被关掉，强制给超管加回
         jdbc.update("""
                 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, is_active)
@@ -929,17 +922,9 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 (314, '新增粉丝', 420, 5, 'anchor/fan', 'anchor/fan/index', 'C', 'payroll:anchor:list', 'UserAddOutlined', 0, 0, '剔除 49136593613', 1),
                 (315, '新增粉丝编辑', 314, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1)
                 ON DUPLICATE KEY UPDATE
-                  menu_name = VALUES(menu_name),
-                  parent_id = VALUES(parent_id),
-                  sort_order = VALUES(sort_order),
-                  path = VALUES(path),
                   component = VALUES(component),
                   menu_type = VALUES(menu_type),
                   perms = VALUES(perms),
-                  icon = VALUES(icon),
-                  visible = 0,
-                  status = 0,
-                  remark = VALUES(remark),
                   is_active = 1
                 """);
         jdbc.update("""
