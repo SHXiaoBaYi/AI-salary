@@ -25,7 +25,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 把钉钉企业通讯录同步到算薪部门和员工。工资、身份证、银行卡以系统里已填写的为准。
+ * 把钉钉企业通讯录同步到算薪部门和员工。工资、身份证、银行卡，以及已经填过的工作地、职级，以系统里已填写的为准。
+ * 新员工和原来没填的：工作地默认新疆，职级默认一线员工。
  */
 @Service
 @RequiredArgsConstructor
@@ -33,6 +34,8 @@ public class PayrollDingTalkSyncService {
 
     private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
     private static final String EMPTY_POST = "未设置岗位";
+    private static final String DEFAULT_WORK_PLACE = "新疆";
+    private static final String DEFAULT_GRADE_NAME = "一线员工";
 
     private final JdbcTemplate jdbc;
     private final DingTalkAuthService dingTalkAuthService;
@@ -147,6 +150,7 @@ public class PayrollDingTalkSyncService {
             deptIds.put(dept.dingId, upsertDept(dept, operator));
         }
         Map<String, Long> postIds = new HashMap<>();
+        long defaultGradeId = frontlineGradeId(operator);
         PayDingTalkSyncVO vo = new PayDingTalkSyncVO();
         vo.setDeptCount(depts.size());
         vo.setEmployeeCount(users.size());
@@ -162,7 +166,7 @@ public class PayrollDingTalkSyncService {
             }
             String postName = StringUtils.hasText(user.title) ? user.title : EMPTY_POST;
             Long postId = postIds.computeIfAbsent(postName, name -> upsertPost(name, operator));
-            if (upsertEmployee(user, deptId, postId, operator)) {
+            if (upsertEmployee(user, deptId, postId, defaultGradeId, operator)) {
                 vo.setCreated(vo.getCreated() + 1);
             } else {
                 vo.setUpdated(vo.getUpdated() + 1);
@@ -239,7 +243,7 @@ public class PayrollDingTalkSyncService {
     }
 
     /** @return true 表示新增 */
-    private boolean upsertEmployee(DingUser user, long deptId, long postId, String operator) {
+    private boolean upsertEmployee(DingUser user, long deptId, long postId, long defaultGradeId, String operator) {
         Existing existing = findExisting(user);
         Date hireDate = hireDate(user.hiredDate);
         int jobStatus = user.active ? 1 : 0;
@@ -247,11 +251,13 @@ public class PayrollDingTalkSyncService {
             String employeeNo = pickEmployeeNo(user.jobNumber, user.userid, null);
             jdbc.update("""
                     INSERT INTO pay_employee
-                      (dept_id, post_id, employee_name, hire_date, salary_standard, employee_no, phone,
-                       id_card, bank_account, bank_name, job_status, dingtalk_user_id, create_by, is_active)
-                    VALUES (?, ?, ?, ?, 0, ?, ?, '', '', '', ?, ?, ?, 1)
-                    """, deptId, postId, user.name, hireDate == null ? Date.valueOf(LocalDate.now(SHANGHAI)) : hireDate,
-                    employeeNo, user.phone == null ? "" : user.phone, jobStatus, cut(user.userid, 64), operator);
+                      (dept_id, post_id, grade_id, employee_name, hire_date, salary_standard, employee_no, phone,
+                       id_card, bank_account, bank_name, job_status, work_place, dingtalk_user_id, create_by, is_active)
+                    VALUES (?, ?, ?, ?, ?, 0, ?, ?, '', '', '', ?, ?, ?, ?, 1)
+                    """, deptId, postId, defaultGradeId, user.name,
+                    hireDate == null ? Date.valueOf(LocalDate.now(SHANGHAI)) : hireDate,
+                    employeeNo, user.phone == null ? "" : user.phone, jobStatus, DEFAULT_WORK_PLACE,
+                    cut(user.userid, 64), operator);
             return true;
         }
         String employeeNo = StringUtils.hasText(user.jobNumber)
@@ -262,11 +268,59 @@ public class PayrollDingTalkSyncService {
         jdbc.update("""
                 UPDATE pay_employee
                 SET dept_id = ?, post_id = ?, employee_name = ?, hire_date = ?, employee_no = ?, phone = ?,
-                    job_status = ?, dingtalk_user_id = ?, is_active = 1, update_by = ?
+                    job_status = ?, dingtalk_user_id = ?, is_active = 1,
+                    work_place = CASE WHEN work_place IS NULL OR work_place = '' THEN ? ELSE work_place END,
+                    grade_id = CASE WHEN grade_id IS NULL OR grade_id = 0 THEN ? ELSE grade_id END,
+                    update_by = ?
                 WHERE id = ?
                 """, deptId, postId, user.name, nextHire, employeeNo, phone == null ? "" : phone,
-                jobStatus, cut(user.userid, 64), operator, existing.id);
+                jobStatus, cut(user.userid, 64), DEFAULT_WORK_PLACE, defaultGradeId, operator, existing.id);
         return false;
+    }
+
+    private long frontlineGradeId(String operator) {
+        List<Long> enabled = jdbc.query("""
+                SELECT id FROM pay_grade
+                WHERE is_active = 1 AND status = 0 AND grade_name = ?
+                ORDER BY id LIMIT 1
+                """, (rs, row) -> rs.getLong(1), DEFAULT_GRADE_NAME);
+        if (!enabled.isEmpty()) {
+            ensureLateRule(enabled.get(0), operator);
+            return enabled.get(0);
+        }
+        List<Long> any = jdbc.query("""
+                SELECT id FROM pay_grade
+                WHERE is_active = 1 AND grade_name = ?
+                ORDER BY id LIMIT 1
+                """, (rs, row) -> rs.getLong(1), DEFAULT_GRADE_NAME);
+        if (!any.isEmpty()) {
+            ensureLateRule(any.get(0), operator);
+            return any.get(0);
+        }
+        jdbc.update("""
+                INSERT INTO pay_grade (grade_name, sort_order, status, create_by, is_active)
+                VALUES (?, 0, 0, ?, 1)
+                """, DEFAULT_GRADE_NAME, operator);
+        Long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        if (id == null) {
+            throw new BusinessException("保存职级「一线员工」失败");
+        }
+        ensureLateRule(id, operator);
+        return id;
+    }
+
+    private void ensureLateRule(long gradeId, String operator) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(1) FROM pay_late_rule WHERE grade_id = ? AND is_active = 1
+                """, Integer.class, gradeId);
+        if (count != null && count > 0) {
+            return;
+        }
+        jdbc.update("""
+                INSERT INTO pay_late_rule
+                  (grade_id, allow_count, personal1_amount, personal2_amount, reward_amount, punish_amount, create_by, is_active)
+                VALUES (?, 3, 0, 0, 0, 0, ?, 1)
+                """, gradeId, operator);
     }
 
     private Existing findExisting(DingUser user) {

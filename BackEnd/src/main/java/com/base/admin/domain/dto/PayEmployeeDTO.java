@@ -103,7 +103,7 @@ public class PayEmployeeDTO {
 
     @NotBlank(message = "请选择工作地")
     @Size(max = 10, message = "工作地不能超过10字")
-    @Schema(description = "工作地：上海/新疆", example = "上海")
+    @Schema(description = "工作地：上海/新疆", example = "新疆")
     private String workPlace;
 
     @Size(max = 10, message = "户口性质不能超过10字")

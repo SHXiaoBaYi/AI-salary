@@ -115,6 +115,7 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         ensureIndex("pay_employee", "idx_grade", "ALTER TABLE pay_employee ADD INDEX idx_grade (grade_id)");
         ensureSalaryCompositionColumns();
         createGradeTables();
+        fillUnsetEmployeeDefaults();
         createSocialTables();
         seedSocialRules();
         createFeeTables();
@@ -257,6 +258,49 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 SET amt_bulletin_critic = punish_amount
                 WHERE is_active = 1 AND amt_bulletin_critic = 0 AND punish_amount <> 0
                 """);
+    }
+
+    /** 工作地、职级只补空值：工作地默认新疆，职级默认一线员工。已填写的不改。 */
+    private void fillUnsetEmployeeDefaults() {
+        jdbc.update("""
+                INSERT INTO pay_grade (grade_name, sort_order, status, create_by, is_active)
+                SELECT '一线员工', 0, 0, 'system', 1
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM pay_grade WHERE grade_name = '一线员工' AND is_active = 1
+                )
+                """);
+        List<Long> gradeIds = jdbc.query("""
+                SELECT id FROM pay_grade
+                WHERE grade_name = '一线员工' AND is_active = 1
+                ORDER BY status, id
+                LIMIT 1
+                """, (rs, row) -> rs.getLong(1));
+        if (gradeIds.isEmpty()) {
+            log.warn("未找到职级「一线员工」，跳过员工默认职级回填");
+            return;
+        }
+        Long gradeId = gradeIds.get(0);
+        Integer rules = jdbc.queryForObject("""
+                SELECT COUNT(1) FROM pay_late_rule WHERE grade_id = ? AND is_active = 1
+                """, Integer.class, gradeId);
+        if (rules == null || rules == 0) {
+            jdbc.update("""
+                    INSERT INTO pay_late_rule
+                      (grade_id, allow_count, personal1_amount, personal2_amount, reward_amount, punish_amount, create_by, is_active)
+                    VALUES (?, 3, 0, 0, 0, 0, 'system', 1)
+                    """, gradeId);
+        }
+        int places = jdbc.update("""
+                UPDATE pay_employee
+                SET work_place = '新疆'
+                WHERE is_active = 1 AND (work_place IS NULL OR work_place = '')
+                """);
+        int grades = jdbc.update("""
+                UPDATE pay_employee
+                SET grade_id = ?
+                WHERE is_active = 1 AND (grade_id IS NULL OR grade_id = 0)
+                """, gradeId);
+        log.info("未设置的工作地补为新疆 {} 人，未设置的职级补为一线员工 {} 人", places, grades);
     }
 
     private void createFeeTables() {

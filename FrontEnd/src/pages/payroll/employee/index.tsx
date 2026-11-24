@@ -125,7 +125,12 @@ export const PayrollEmployeePage = memo(function PayrollEmployeePage({ mode }: {
             jobStatus: row.jobStatus === 1,
             workPlace: row.workPlace || undefined,
           }
-        : { jobStatus: true, workPlace: '上海', ...ZERO_SALARY },
+        : {
+            jobStatus: true,
+            workPlace: '新疆',
+            gradeId: activeGrades.find((item) => item.gradeName === '一线员工')?.id,
+            ...ZERO_SALARY,
+          },
     );
     setOpen(true);
   };
@@ -134,7 +139,7 @@ export const PayrollEmployeePage = memo(function PayrollEmployeePage({ mode }: {
     modal.confirm({
       title: '从钉钉同步通讯录？',
       content:
-        '按钉钉企业通讯录写入部门和员工。已有员工的底薪构成、身份证、银行卡不会被覆盖。通讯录里已经没有的人会标成离职。',
+        '按钉钉企业通讯录写入部门和员工。已有员工的底薪构成、身份证、银行卡，以及已经填过的工作地和职级不会被覆盖。没填工作地的补成新疆，没填职级的补成一线员工。通讯录里已经没有的人会标成离职。',
       okText: '开始同步',
       onOk: async () => {
         setSyncing(true);
