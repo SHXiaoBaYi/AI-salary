@@ -24,6 +24,7 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\ProdReleaseReady.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\RdsEnvironmentGuard.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\SecurityConfig.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\config\WebMvcConfig.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\AnchorCommissionController.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\PayrollAttendanceController.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\PayrollBaseController.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\PayrollBulletinController.java
@@ -40,6 +41,11 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\SysLoginController.
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\SysMenuController.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\SysRoleController.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\controller\SysUserController.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\AncChannelSaveDTO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\AncPreviewDTO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\AncProductRateDTO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\AncProductRateQueryDTO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\AncTierDTO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\ChangeStatusDTO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\DingTalkAppDTO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\dto\DingTalkLoginDTO.java
@@ -86,6 +92,13 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\entity\SysRoleMenu.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\entity\SysUser.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\entity\SysUserOnline.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\entity\SysUserRole.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncChannelRuleVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncPolicyExampleVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncPolicyStepVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncPolicyVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncPreviewVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncProductRateVO.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\AncTierVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\DingTalkAppVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\DingTalkLoginConfigVO.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\domain\vo\LoginOptionsVO.java
@@ -136,6 +149,9 @@ D:\AI-salary\BackEnd\src\main\java\com\base\admin\security\JwtUtils.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\security\LoginUser.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\security\UserDetailsServiceImpl.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\AiChatService.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\AnchorCommissionCalculator.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\AnchorCommissionPolicy.java
+D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\AnchorCommissionService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\DingTalkAppService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\DingTalkAuthService.java
 D:\AI-salary\BackEnd\src\main\java\com\base\admin\service\DingTalkForceLoginTicketStore.java

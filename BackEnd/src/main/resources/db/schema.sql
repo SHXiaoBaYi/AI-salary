@@ -549,3 +549,54 @@ CREATE TABLE IF NOT EXISTS pay_work_calendar (
   PRIMARY KEY (id),
   UNIQUE KEY uk_work_calendar (cal_year, cal_month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='计薪天数';
+
+CREATE TABLE IF NOT EXISTS anc_product_rate (
+  id            BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+  sort_no       INT           NOT NULL DEFAULT 0      COMMENT '排序',
+  product_name  VARCHAR(80)   NOT NULL                COMMENT '品名关键字',
+  category      VARCHAR(16)   NOT NULL                COMMENT 'premium/cold/combo/cooked/produce',
+  amount        DECIMAL(12,4) NOT NULL DEFAULT 0      COMMENT '提成标准，元',
+  unit          VARCHAR(8)    NOT NULL                COMMENT 'piece每件 kg每公斤',
+  accrue        TINYINT       NOT NULL DEFAULT 1      COMMENT '1计提 0不计提',
+  status        TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1停用',
+  remark        VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '备注',
+  create_by     VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+  create_time   DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by     VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+  update_time   DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active     TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_product_name (product_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播单品提成标准';
+
+CREATE TABLE IF NOT EXISTS anc_channel_rule (
+  id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  channel_code    VARCHAR(32)  NOT NULL                COMMENT 'hour/flagship',
+  channel_name    VARCHAR(50)  NOT NULL                COMMENT '渠道名称',
+  week_start      TINYINT      NOT NULL DEFAULT 6      COMMENT '周起始 1周一至7周日',
+  effective_from  DATE         NULL                    COMMENT '生效起',
+  effective_to    DATE         NULL                    COMMENT '生效止，空表示现行',
+  remark          VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+  sort_order      INT          NOT NULL DEFAULT 0      COMMENT '排序',
+  status          TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1停用',
+  create_by       VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+  create_time     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by       VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+  update_time     DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active       TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_anc_channel (channel_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播渠道提成规则';
+
+CREATE TABLE IF NOT EXISTS anc_tier (
+  id               BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+  channel_id       BIGINT        NOT NULL                COMMENT '渠道',
+  tier_type        VARCHAR(8)    NOT NULL                COMMENT 'gmv/fan',
+  lower_exclusive  DECIMAL(14,2) NOT NULL DEFAULT 0      COMMENT '下限，不含',
+  upper_inclusive  DECIMAL(14,2) NULL                    COMMENT '上限，含，空表示以上',
+  rate             DECIMAL(12,6) NOT NULL DEFAULT 0      COMMENT '业绩为比例，粉丝为元/人',
+  sort_no          INT           NOT NULL DEFAULT 0      COMMENT '排序',
+  is_active        TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_tier_channel (channel_id, tier_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播提成阶梯';

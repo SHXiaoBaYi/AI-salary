@@ -520,6 +520,132 @@ export function savePayCalendarApi(year: number, months: PayWorkCalendar[]) {
   });
 }
 
+export type AncProductRate = {
+  id: number;
+  sortNo: number;
+  productName: string;
+  category: string;
+  categoryLabel: string;
+  amount: number;
+  unit: string;
+  unitLabel: string;
+  accrue: number;
+  status: number;
+  remark?: string;
+};
+
+export type AncTier = {
+  id?: number;
+  tierType?: string;
+  lowerExclusive: number;
+  upperInclusive?: number | null;
+  rate: number;
+  sortNo?: number;
+};
+
+export type AncChannelRule = {
+  id: number;
+  channelCode: string;
+  channelName: string;
+  weekStart: number;
+  weekLabel: string;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  remark?: string;
+  status: number;
+  sortOrder: number;
+  gmvTiers: AncTier[];
+  fanTiers: AncTier[];
+};
+
+export type AncPolicyStep = {
+  seq: number;
+  title: string;
+  origin: string;
+  detail: string;
+};
+
+export type AncPolicyExample = {
+  channel: string;
+  scene: string;
+  result: string;
+};
+
+export type AncPolicy = {
+  steps: AncPolicyStep[];
+  examples: AncPolicyExample[];
+};
+
+export type AncPreview = {
+  matchedProduct: string;
+  categoryLabel: string;
+  unitLabel: string;
+  gramsPerUnit?: number | null;
+  totalGrams?: number | null;
+  productCommission: number;
+  lineNetGmv?: number | null;
+  weekNetGmv?: number | null;
+  extraCommission: number;
+  fanCommission: number;
+  total: number;
+  notes: string[];
+};
+
+export function pageAncProductsApi(params: {
+  productName?: string;
+  category?: string;
+  status?: number;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return request.post<unknown, PageResult<AncProductRate>>('/payroll/anchor/products/list', params);
+}
+
+export function saveAncProductApi(data: Partial<AncProductRate>) {
+  return request.post('/payroll/anchor/products', data);
+}
+
+export function deleteAncProductApi(id: number) {
+  return request.delete(`/payroll/anchor/products/${id}`);
+}
+
+export function getAncChannelsApi() {
+  return request.get<unknown, AncChannelRule[]>('/payroll/anchor/channels');
+}
+
+export function saveAncChannelApi(data: {
+  id: number;
+  channelName: string;
+  weekStart: number;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  remark?: string;
+  status: number;
+  gmvTiers: Pick<AncTier, 'lowerExclusive' | 'upperInclusive' | 'rate'>[];
+  fanTiers: Pick<AncTier, 'lowerExclusive' | 'upperInclusive' | 'rate'>[];
+}) {
+  return request.put('/payroll/anchor/channels', data);
+}
+
+export function getAncPolicyApi() {
+  return request.get<unknown, AncPolicy>('/payroll/anchor/policy');
+}
+
+export function previewAncCommissionApi(data: {
+  channelCode?: string;
+  productName?: string;
+  spec?: string;
+  qty?: number;
+  payable?: number;
+  freight?: number;
+  refundAmount?: number;
+  refundAgreed?: boolean;
+  weekNetGmv?: number;
+  fanCount?: number;
+}) {
+  return request.post<unknown, AncPreview>('/payroll/anchor/preview', data);
+}
+
 export function savePaySocialRuleApi(data: Pick<PaySocialRule, 'id' | 'baseMin' | 'baseMax' | 'remark' | 'items'>) {
   return request.put('/payroll/social/rules', {
     id: data.id,

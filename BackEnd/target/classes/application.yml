@@ -29,7 +29,7 @@ xby:
     password: ${RDS_PASSWORD:Xby@123456}
   upload-dir: ${UPLOAD_DIR:./uploads}
   # Java 代码不得再写死 IP 作 @Value 默认值
-  upload-public-base: ${UPLOAD_PUBLIC_BASE:http://47.99.95.38/shxby/api}
+  upload-public-base: ${UPLOAD_PUBLIC_BASE:https://47.99.95.38/api}
   # 账号密码登录：默认仅 localhost；测试环境在 application-test.yml 打开
   auth:
     password-login-enabled: ${XBY_PASSWORD_LOGIN_ENABLED:false}

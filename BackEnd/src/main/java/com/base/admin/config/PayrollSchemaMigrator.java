@@ -174,6 +174,7 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 WHERE role_id = 1
                   AND menu_id IN (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
                 """);
+        seedAnchorCommission();
         Integer menuCount = jdbc.queryForObject("""
                 SELECT COUNT(1) FROM sys_menu
                 WHERE is_active = 1 AND menu_id BETWEEN 200 AND 224
@@ -687,6 +688,183 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         }
         return rows;
     }
+
+    private void seedAnchorCommission() {
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_product_rate (
+                  id            BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  sort_no       INT           NOT NULL DEFAULT 0      COMMENT '排序',
+                  product_name  VARCHAR(80)   NOT NULL                COMMENT '品名关键字',
+                  category      VARCHAR(16)   NOT NULL                COMMENT 'premium/cold/combo/cooked/produce',
+                  amount        DECIMAL(12,4) NOT NULL DEFAULT 0      COMMENT '提成标准，元',
+                  unit          VARCHAR(8)    NOT NULL                COMMENT 'piece每件 kg每公斤',
+                  accrue        TINYINT       NOT NULL DEFAULT 1      COMMENT '1计提 0不计提',
+                  status        TINYINT       NOT NULL DEFAULT 0      COMMENT '0正常 1停用',
+                  remark        VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '备注',
+                  create_by     VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+                  create_time   DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by     VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+                  update_time   DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active     TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_product_name (product_name)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播单品提成标准'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_channel_rule (
+                  id              BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  channel_code    VARCHAR(32)  NOT NULL                COMMENT 'hour/flagship',
+                  channel_name    VARCHAR(50)  NOT NULL                COMMENT '渠道名称',
+                  week_start      TINYINT      NOT NULL DEFAULT 6      COMMENT '周起始 1周一至7周日',
+                  effective_from  DATE         NULL                    COMMENT '生效起',
+                  effective_to    DATE         NULL                    COMMENT '生效止，空表示现行',
+                  remark          VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+                  sort_order      INT          NOT NULL DEFAULT 0      COMMENT '排序',
+                  status          TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1停用',
+                  create_by       VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+                  create_time     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by       VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+                  update_time     DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active       TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_anc_channel (channel_code)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播渠道提成规则'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_tier (
+                  id               BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  channel_id       BIGINT        NOT NULL                COMMENT '渠道',
+                  tier_type        VARCHAR(8)    NOT NULL                COMMENT 'gmv/fan',
+                  lower_exclusive  DECIMAL(14,2) NOT NULL DEFAULT 0      COMMENT '下限，不含',
+                  upper_inclusive  DECIMAL(14,2) NULL                    COMMENT '上限，含，空表示以上',
+                  rate             DECIMAL(12,6) NOT NULL DEFAULT 0      COMMENT '业绩为比例，粉丝为元/人',
+                  sort_no          INT           NOT NULL DEFAULT 0      COMMENT '排序',
+                  is_active        TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_tier_channel (channel_id, tier_type)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播提成阶梯'
+                """);
+        Integer productCount = jdbc.queryForObject("SELECT COUNT(1) FROM anc_product_rate", Integer.class);
+        if (productCount == null || productCount == 0) {
+            for (String[] row : ANCHOR_PRODUCTS) {
+                jdbc.update("""
+                        INSERT INTO anc_product_rate
+                          (sort_no, product_name, category, amount, unit, accrue, status, remark, create_by, is_active)
+                        VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'system', 1)
+                        """, Integer.parseInt(row[0]), row[1], row[2], new java.math.BigDecimal(row[3]), row[4],
+                        Integer.parseInt(row[5]), row[6]);
+            }
+        }
+        seedAnchorChannel("hour", "抖音小时达", 6, "2026-04-11",
+                "原表标题为 2026.4.11-2026.5.15。后续周核算仍沿用，截止日留空。周界按周六至周五补齐。",
+                1,
+                new String[][]{{"0", "6000", "0"}, {"6000", "15000", "0.02"}, {"15000", "", "0.03"}},
+                new String[][]{{"0", "40", "0.5"}, {"40", "", "1"}});
+        seedAnchorChannel("flagship", "抖音旗舰店", 6, null,
+                "原表未写生效日期，按现行周标准。阶梯为累进。周界按周六至周五补齐。",
+                2,
+                new String[][]{{"0", "4000", "0"}, {"4000", "8000", "0.02"}, {"8000", "15000", "0.025"}, {"15000", "", "0.03"}},
+                new String[][]{{"0", "", "1"}});
+        jdbc.update("""
+                INSERT INTO sys_menu (menu_id, menu_name, parent_id, sort_order, path, component, menu_type, perms, icon, visible, status, remark, is_active)
+                VALUES
+                (300, '主播提成', 0, 4, '/anchor', '', 'M', '', 'VideoCameraOutlined', 0, 0, '直播提成标准与试算', 1),
+                (301, '单品标准', 300, 1, 'rate', 'anchor/rate/index', 'C', 'payroll:anchor:list', 'TagsOutlined', 0, 0, '精品、冷鲜、组合、熟食、果蔬', 1),
+                (302, '单品标准编辑', 301, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (303, '渠道阶梯', 300, 2, 'channel', 'anchor/channel/index', 'C', 'payroll:anchor:list', 'FundOutlined', 0, 0, '小时达与旗舰店的周业绩、粉丝阶梯', 1),
+                (304, '渠道阶梯编辑', 303, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (305, '核算试算', 300, 3, 'preview', 'anchor/preview/index', 'C', 'payroll:anchor:list', 'AuditOutlined', 0, 0, '原表口径和补齐后的试算', 1)
+                ON DUPLICATE KEY UPDATE
+                  menu_name = VALUES(menu_name),
+                  parent_id = VALUES(parent_id),
+                  sort_order = VALUES(sort_order),
+                  path = VALUES(path),
+                  component = VALUES(component),
+                  menu_type = VALUES(menu_type),
+                  perms = VALUES(perms),
+                  icon = VALUES(icon),
+                  visible = 0,
+                  status = 0,
+                  remark = VALUES(remark),
+                  is_active = 1
+                """);
+        jdbc.update("""
+                INSERT IGNORE INTO sys_role_menu (role_id, menu_id, is_active)
+                SELECT 1, menu_id, 1 FROM sys_menu WHERE menu_id BETWEEN 300 AND 305
+                """);
+        jdbc.update("""
+                UPDATE sys_role_menu SET is_active = 1
+                WHERE role_id = 1 AND menu_id BETWEEN 300 AND 305
+                """);
+        log.info("主播提成标准、渠道阶梯与菜单已同步");
+    }
+
+    private void seedAnchorChannel(String code, String name, int weekStart, String from, String remark, int sort,
+                                   String[][] gmvTiers, String[][] fanTiers) {
+        Integer exists = jdbc.queryForObject(
+                "SELECT COUNT(1) FROM anc_channel_rule WHERE channel_code = ?", Integer.class, code);
+        if (exists != null && exists > 0) {
+            return;
+        }
+        jdbc.update("""
+                INSERT INTO anc_channel_rule
+                  (channel_code, channel_name, week_start, effective_from, remark, sort_order, status, create_by, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, 0, 'system', 1)
+                """, code, name, weekStart, from == null ? null : java.sql.Date.valueOf(from), remark, sort);
+        Long channelId = jdbc.queryForObject(
+                "SELECT id FROM anc_channel_rule WHERE channel_code = ?", Long.class, code);
+        insertAnchorTiers(channelId, "gmv", gmvTiers);
+        insertAnchorTiers(channelId, "fan", fanTiers);
+    }
+
+    private void insertAnchorTiers(Long channelId, String type, String[][] tiers) {
+        int seq = 1;
+        for (String[] tier : tiers) {
+            jdbc.update("""
+                    INSERT INTO anc_tier (channel_id, tier_type, lower_exclusive, upper_inclusive, rate, sort_no, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)
+                    """, channelId, type, new java.math.BigDecimal(tier[0]),
+                    tier[1].isEmpty() ? null : new java.math.BigDecimal(tier[1]),
+                    new java.math.BigDecimal(tier[2]), seq++);
+        }
+    }
+
+    private static final String[][] ANCHOR_PRODUCTS = {
+            {"1", "金羯羊全羊", "premium", "80", "piece", "1", ""},
+            {"2", "金羯羊精选", "premium", "80", "piece", "1", ""},
+            {"3", "追风羯羊全羊", "premium", "50", "piece", "1", ""},
+            {"4", "冰碴驹俐全羊", "premium", "15", "piece", "1", ""},
+            {"5", "冰碴驹俐精选", "premium", "10", "piece", "1", ""},
+            {"6", "冰碴驹俐精品", "premium", "2", "piece", "1", ""},
+            {"7", "小羯羊全羊", "premium", "10", "piece", "1", ""},
+            {"8", "小羯羊精选羊排", "premium", "2", "piece", "1", ""},
+            {"9", "小羯羊精选", "premium", "1", "piece", "1", ""},
+            {"10", "小羯羊精品腿肉", "premium", "5", "piece", "1", ""},
+            {"11", "小羯羊精品羊腿", "premium", "2", "piece", "1", ""},
+            {"12", "南疆-乳羔羊全羊", "premium", "20", "piece", "1", ""},
+            {"13", "乳羔羊全羊", "premium", "5", "piece", "1", ""},
+            {"14", "乳羔羊肉品羊排", "premium", "2", "piece", "1", ""},
+            {"15", "乳羔羊精品", "premium", "1", "piece", "1", ""},
+            {"16", "草膘牛精选", "premium", "2", "piece", "1", ""},
+            {"17", "草膘牛精选腿肉", "premium", "1", "piece", "1", ""},
+            {"18", "草膘牛精品", "premium", "2", "piece", "1", ""},
+            {"19", "草膘牛精品牛肋排", "premium", "2", "piece", "1", ""},
+            {"20", "草膘牛精品牛腩", "premium", "2", "piece", "1", ""},
+            {"21", "草膘牛精品牛腿肉", "premium", "1", "piece", "1", ""},
+            {"22", "生马肠礼盒", "premium", "2", "piece", "1", ""},
+            {"23", "2岁土鸡", "premium", "10", "piece", "1", ""},
+            {"24", "北疆羊肉", "cold", "0.3", "kg", "1", "原表与冷鲜羊肉写在同一格"},
+            {"25", "冷鲜羊肉", "cold", "0.3", "kg", "1", "原表与北疆羊肉写在同一格，按更长品名优先"},
+            {"26", "南疆牧场冷鲜羊肉", "cold", "2", "kg", "1", ""},
+            {"27", "胡杨鸽", "premium", "1", "piece", "1", ""},
+            {"28", "羊鲜鲜", "premium", "0.5", "piece", "1", ""},
+            {"29", "冰碴驹俐尝鲜款", "premium", "2", "piece", "1", ""},
+            {"90", "熟食", "cooked", "0", "piece", "0", "原表规定熟食不核算提成"},
+            {"91", "果蔬", "produce", "0", "piece", "0", "原表规定果蔬不核算提成"},
+            {"92", "蔬菜", "produce", "0", "piece", "0", "补齐：与果蔬同一口径"},
+            {"93", "水果", "produce", "0", "piece", "0", "补齐：与果蔬同一口径"},
+            {"94", "组合", "combo", "0", "kg", "1", "原表没有组合商品和单价。未命中更长单品时按公斤公式，标准为 0"}
+    };
 
     private void ensureColumn(String table, String column, String ddl) {
         Integer exists = jdbc.queryForObject("""
