@@ -8,7 +8,7 @@ import type { MenuTree } from '@/types/menu';
 import { PageLoading } from '@ant-design/pro-components';
 import { RouteErrorPage } from '@/components/PageErrorBoundary';
 import { getRouterBasename } from '@/utils/basePath';
-import { resolveMenuFullPath, toMenuRelativePath } from '@/utils/menuPath';
+import { firstMenuLeafPath, resolveMenuFullPath, toMenuRelativePath } from '@/utils/menuPath';
 
 // eslint-disable-next-line react-refresh/only-export-components
 function PagePlaceholder() {
@@ -145,7 +145,7 @@ export function createAppRouter(menus: MenuTree[], isLoggedIn: boolean) {
             index: true,
             element: (
               <Navigate
-                to='/system/user'
+                to={firstMenuLeafPath(menus) || '/login'}
                 replace
               />
             ),

@@ -1,3 +1,5 @@
+import type { MenuTree } from '@/types/menu';
+
 /**
  * 解析菜单完整路径。
  * 本项目叶子菜单 path 约定为绝对短路径（如 system/user）；
@@ -18,4 +20,23 @@ export function toMenuRelativePath(fullPath: string, parentFullPath = ''): strin
     return fullPath.slice(parentFullPath.length + 1);
   }
   return fullPath;
+}
+
+/** 登录后的默认页：当前角色侧栏里的第一个叶子菜单。 */
+export function firstMenuLeafPath(menus: MenuTree[] | undefined, parentPath = ''): string | null {
+  for (const menu of menus || []) {
+    const clean = (menu.path || '').replace(/^\//, '');
+    const hasChildren = !!menu.children?.length;
+    const fullPath = resolveMenuFullPath(menu.path, parentPath);
+    const isGroupingOnly = clean.includes('/') && !!parentPath;
+    const childParent = isGroupingOnly ? parentPath : fullPath;
+    if (hasChildren) {
+      const nested = firstMenuLeafPath(menu.children, childParent);
+      if (nested) return nested;
+      continue;
+    }
+    if (!clean || menu.menuType === 'F') continue;
+    return `/${clean.includes('/') ? clean : fullPath}`;
+  }
+  return null;
 }

@@ -24,7 +24,9 @@ const autoMap = buildAutoMap();
  */
 const componentMap: Record<string, LazyExoticComponent<any>> = {
   ...autoMap,
-  // '/view/test': lazy(() => import('@/pages/test/demo')),// 这里自定义路由，前提是当前用户有该路由的访问权限
+  // 高管菜单用单独地址打开同一页面，侧栏高亮不会和财务助理的入口撞在一起
+  '/exec/wage': lazy(() => import('@/pages/payroll/employee')),
+  '/exec/week': lazy(() => import('@/pages/anchor/week')),
 };
 
 export default componentMap;

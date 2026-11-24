@@ -6,7 +6,7 @@ import com.base.admin.common.PageResult;
 import com.base.admin.common.Result;
 import com.base.admin.domain.dto.PayEmployeeDTO;
 import com.base.admin.domain.dto.PayEmployeeQueryDTO;
-import com.base.admin.domain.dto.PayPeriodDTO;
+import com.base.admin.domain.dto.PayWageExportDTO;
 import com.base.admin.domain.vo.PayDingTalkSyncVO;
 import com.base.admin.domain.vo.PayEmployeeVO;
 import com.base.admin.domain.vo.PayWageExportJobVO;
@@ -71,8 +71,8 @@ public class PayrollEmployeeController {
     @PostMapping("/wage-export/start")
     @RequiresPermission("payroll:employee:list")
     @Log(title = "生成工资明细", businessType = 5)
-    public Result<PayWageExportJobVO> startWageExport(@Valid @RequestBody PayPeriodDTO dto) {
-        return Result.ok(wageExportService.start(dto.getPeriod()));
+    public Result<PayWageExportJobVO> startWageExport(@Valid @RequestBody PayWageExportDTO dto) {
+        return Result.ok(wageExportService.start(dto));
     }
 
     @Operation(summary = "查询工资明细生成进度")

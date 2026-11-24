@@ -52,6 +52,10 @@ public class PayrollEmployeeService {
             where.append(" AND e.job_status = ?");
             args.add(query.getJobStatus());
         }
+        if (StringUtils.hasText(query.getWorkPlace())) {
+            where.append(" AND e.work_place = ?");
+            args.add(query.getWorkPlace().trim());
+        }
         String from = """
                 FROM pay_employee e
                 LEFT JOIN pay_dept d ON d.id = e.dept_id AND d.is_active = 1
@@ -68,7 +72,7 @@ public class PayrollEmployeeService {
                        e.amt_post, e.amt_full_attendance, e.amt_social_subsidy, e.amt_housing_subsidy,
                        e.amt_transport, e.amt_noncompete, e.amt_hygiene, e.amt_fixed_overtime,
                        e.employee_no, e.phone, e.id_card, e.bank_account, e.bank_name, e.job_status,
-                       e.hukou_type, e.social_base, e.social_account
+                       e.work_place, e.hukou_type, e.social_base, e.social_account
                 """ + from + where + " ORDER BY e.id DESC LIMIT ? OFFSET ?", EMPLOYEE_MAPPER, pageArgs.toArray());
         return new PageResult<>(total == null ? 0 : total, rows);
     }
@@ -94,6 +98,7 @@ public class PayrollEmployeeService {
         BigDecimal salary = amtPost.add(amtFull).add(amtSocial).add(amtHousing)
                 .add(amtTransport).add(amtNoncompete).add(amtHygiene).add(amtFixedOt)
                 .setScale(2, RoundingMode.HALF_UP);
+        String workPlace = workPlace(dto.getWorkPlace());
         String user = currentUser();
         if (dto.getId() == null) {
             jdbc.update("""
@@ -102,13 +107,13 @@ public class PayrollEmployeeService {
                        amt_post, amt_full_attendance, amt_social_subsidy, amt_housing_subsidy,
                        amt_transport, amt_noncompete, amt_hygiene, amt_fixed_overtime,
                        employee_no, phone, id_card, bank_account, bank_name, job_status,
-                       hukou_type, social_base, social_account, create_by, is_active)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                       work_place, hukou_type, social_base, social_account, create_by, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                     """, dto.getDeptId(), dto.getPostId(), dto.getGradeId(), dto.getEmployeeName().trim(),
                     Date.valueOf(dto.getHireDate()), salary,
                     amtPost, amtFull, amtSocial, amtHousing, amtTransport, amtNoncompete, amtHygiene, amtFixedOt,
                     employeeNo, blank(dto.getPhone()), idCard, blank(dto.getBankAccount()), blank(dto.getBankName()),
-                    jobStatus, hukou(dto.getHukouType()), dto.getSocialBase(), blank(dto.getSocialAccount()), user);
+                    jobStatus, workPlace, hukou(dto.getHukouType()), dto.getSocialBase(), blank(dto.getSocialAccount()), user);
             return;
         }
         int rows = jdbc.update("""
@@ -117,13 +122,13 @@ public class PayrollEmployeeService {
                     amt_post = ?, amt_full_attendance = ?, amt_social_subsidy = ?, amt_housing_subsidy = ?,
                     amt_transport = ?, amt_noncompete = ?, amt_hygiene = ?, amt_fixed_overtime = ?,
                     employee_no = ?, phone = ?, id_card = ?, bank_account = ?, bank_name = ?, job_status = ?,
-                    hukou_type = ?, social_base = ?, social_account = ?, update_by = ?
+                    work_place = ?, hukou_type = ?, social_base = ?, social_account = ?, update_by = ?
                 WHERE id = ? AND is_active = 1
                 """, dto.getDeptId(), dto.getPostId(), dto.getGradeId(), dto.getEmployeeName().trim(),
                 Date.valueOf(dto.getHireDate()), salary,
                 amtPost, amtFull, amtSocial, amtHousing, amtTransport, amtNoncompete, amtHygiene, amtFixedOt,
                 employeeNo, blank(dto.getPhone()), idCard, blank(dto.getBankAccount()), blank(dto.getBankName()),
-                jobStatus, hukou(dto.getHukouType()), dto.getSocialBase(), blank(dto.getSocialAccount()), user, dto.getId());
+                jobStatus, workPlace, hukou(dto.getHukouType()), dto.getSocialBase(), blank(dto.getSocialAccount()), user, dto.getId());
         if (rows == 0) {
             throw new BusinessException("员工不存在");
         }
@@ -198,6 +203,14 @@ public class PayrollEmployeeService {
         return text;
     }
 
+    private static String workPlace(String value) {
+        String text = blank(value);
+        if (!"上海".equals(text) && !"新疆".equals(text)) {
+            throw new BusinessException("工作地只能是上海或新疆");
+        }
+        return text;
+    }
+
     private static String currentUser() {
         String name = SecurityUtils.getCurrentUsername();
         return StringUtils.hasText(name) ? name : "";
@@ -233,6 +246,7 @@ public class PayrollEmployeeService {
             vo.setBankAccount(rs.getString("bank_account"));
             vo.setBankName(rs.getString("bank_name"));
             vo.setJobStatus(rs.getInt("job_status"));
+            vo.setWorkPlace(rs.getString("work_place"));
             vo.setHukouType(rs.getString("hukou_type"));
             vo.setSocialBase(rs.getBigDecimal("social_base"));
             vo.setSocialAccount(rs.getString("social_account"));

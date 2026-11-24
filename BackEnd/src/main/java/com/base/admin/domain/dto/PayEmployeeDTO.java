@@ -101,6 +101,11 @@ public class PayEmployeeDTO {
     @Schema(description = "1在职 0离职", example = "1")
     private Integer jobStatus;
 
+    @NotBlank(message = "请选择工作地")
+    @Size(max = 10, message = "工作地不能超过10字")
+    @Schema(description = "工作地：上海/新疆", example = "上海")
+    private String workPlace;
+
     @Size(max = 10, message = "户口性质不能超过10字")
     @Schema(description = "户口性质：城镇/农村", example = "城镇")
     private String hukouType;

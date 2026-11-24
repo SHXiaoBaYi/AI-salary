@@ -66,6 +66,7 @@ export type PayEmployee = {
   bankAccount?: string;
   bankName?: string;
   jobStatus: number;
+  workPlace?: string;
   hukouType?: string;
   socialBase?: number | null;
   socialAccount?: string;
@@ -176,8 +177,18 @@ export type PayWageExportJob = {
   fileName?: string;
 };
 
-export function startPayWageExportApi(period: string) {
-  return request.post<unknown, PayWageExportJob>('/payroll/employee/wage-export/start', { period }, { timeout: 60000 });
+export type PayWageExportStart = {
+  period: string;
+  employeeName?: string;
+  deptId?: number;
+  postId?: number;
+  gradeId?: number;
+  jobStatus?: number;
+  workPlace?: string;
+};
+
+export function startPayWageExportApi(data: PayWageExportStart) {
+  return request.post<unknown, PayWageExportJob>('/payroll/employee/wage-export/start', data, { timeout: 60000 });
 }
 
 export function getPayWageExportProgressApi(jobId: string) {
@@ -631,6 +642,90 @@ export function getAncPolicyApi() {
   return request.get<unknown, AncPolicy>('/payroll/anchor/policy');
 }
 
+export type AncAnchor = {
+  id: number;
+  anchorName: string;
+  douyinId: string;
+  douyinNickname?: string;
+  channelCode: string;
+  channelLabel?: string;
+  shopName?: string;
+  phone?: string;
+  status: number;
+  remark?: string;
+};
+
+export type AncSaleLine = {
+  id: number;
+  parentOrderNo: string;
+  subOrderNo: string;
+  payTime?: string | null;
+  productName: string;
+  spec?: string;
+  qty: number;
+  unitPrice?: number;
+  payable?: number;
+  freight?: number;
+  refundAmount?: number;
+  netAmount?: number;
+  orderStatus?: string;
+  talentId?: string;
+  talentName?: string;
+  afterSaleStatus?: string;
+  trafficType?: string;
+  anchorId?: number;
+  anchorName?: string;
+  channelCode?: string;
+  channelLabel?: string;
+  shopName?: string;
+  remark?: string;
+};
+
+export function pageAncAnchorsApi(params: {
+  anchorName?: string;
+  douyinId?: string;
+  channelCode?: string;
+  status?: number;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return request.post<unknown, PageResult<AncAnchor>>('/payroll/anchor/hosts/list', params);
+}
+
+export function getAncAnchorOptionsApi() {
+  return request.get<unknown, AncAnchor[]>('/payroll/anchor/hosts/options');
+}
+
+export function saveAncAnchorApi(data: Partial<AncAnchor>) {
+  return request.post('/payroll/anchor/hosts', data);
+}
+
+export function deleteAncAnchorApi(id: number) {
+  return request.delete(`/payroll/anchor/hosts/${id}`);
+}
+
+export function pageAncSalesApi(params: {
+  subOrderNo?: string;
+  productName?: string;
+  talentId?: string;
+  anchorId?: number;
+  trafficType?: string;
+  payTimeStart?: string;
+  payTimeEnd?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return request.post<unknown, PageResult<AncSaleLine>>('/payroll/anchor/sales/list', params);
+}
+
+export function saveAncSaleApi(data: Partial<AncSaleLine>) {
+  return request.post('/payroll/anchor/sales', data);
+}
+
+export function deleteAncSaleApi(id: number) {
+  return request.delete(`/payroll/anchor/sales/${id}`);
+}
+
 export function previewAncCommissionApi(data: {
   channelCode?: string;
   productName?: string;
@@ -644,6 +739,147 @@ export function previewAncCommissionApi(data: {
   fanCount?: number;
 }) {
   return request.post<unknown, AncPreview>('/payroll/anchor/preview', data);
+}
+
+export type AncRefund = {
+  id: number;
+  afterSaleNo?: string;
+  subOrderNo: string;
+  refundGoodsAmount: number;
+  afterSaleStatus: string;
+  agreed?: boolean;
+  productName?: string;
+  refundTime?: string | null;
+  remark?: string;
+};
+
+export type AncSchedule = {
+  id: number;
+  anchorId: number;
+  anchorName?: string;
+  channelCode: string;
+  channelLabel?: string;
+  liveStart: string;
+  liveEnd: string;
+  summaryFanCount?: number | null;
+  confirmedFanCount?: number | null;
+  rawFanCount?: number;
+  fanMismatch?: boolean;
+  remark?: string;
+};
+
+export type AncFan = {
+  id: number;
+  douyinNo: string;
+  nickname?: string;
+  liveStart: string;
+  excluded?: boolean;
+  remark?: string;
+};
+
+export type AncWeekBill = {
+  anchorId: number;
+  anchorName?: string;
+  orderCount: number;
+  productCommission: number;
+  weekNetGmv: number;
+  extraCommission: number;
+  fanRawCount: number;
+  fanSummaryCount?: number | null;
+  fanCount: number;
+  fanMismatch?: boolean;
+  fanCommission: number;
+  totalAmount: number;
+  remark?: string;
+  calculatedAt?: string;
+};
+
+export type AncWeekUnmatched = {
+  subOrderNo: string;
+  payTime?: string;
+  productName?: string;
+  payable?: number;
+  talentId?: string;
+  reason?: string;
+};
+
+export type AncWeekChannel = {
+  channelCode: string;
+  channelName: string;
+  weekStart: string;
+  weekEnd: string;
+  weekLabel: string;
+  bills: AncWeekBill[];
+};
+
+export type AncWeekResult = {
+  weekDate: string;
+  unmatchedCount?: number;
+  unmatched?: AncWeekUnmatched[];
+  channels: AncWeekChannel[];
+};
+
+export function pageAncRefundsApi(params: {
+  subOrderNo?: string;
+  afterSaleStatus?: string;
+  productName?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return request.post<unknown, PageResult<AncRefund>>('/payroll/anchor/refunds/list', params);
+}
+
+export function saveAncRefundApi(data: Partial<AncRefund>) {
+  return request.post('/payroll/anchor/refunds', data);
+}
+
+export function deleteAncRefundApi(id: number) {
+  return request.delete(`/payroll/anchor/refunds/${id}`);
+}
+
+export function pageAncSchedulesApi(params: {
+  anchorId?: number;
+  channelCode?: string;
+  liveStartFrom?: string;
+  liveStartTo?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return request.post<unknown, PageResult<AncSchedule>>('/payroll/anchor/schedules/list', params);
+}
+
+export function saveAncScheduleApi(data: Partial<AncSchedule>) {
+  return request.post('/payroll/anchor/schedules', data);
+}
+
+export function deleteAncScheduleApi(id: number) {
+  return request.delete(`/payroll/anchor/schedules/${id}`);
+}
+
+export function pageAncFansApi(params: {
+  douyinNo?: string;
+  liveStartFrom?: string;
+  liveStartTo?: string;
+  pageNum?: number;
+  pageSize?: number;
+}) {
+  return request.post<unknown, PageResult<AncFan>>('/payroll/anchor/fans/list', params);
+}
+
+export function saveAncFanApi(data: Partial<AncFan>) {
+  return request.post('/payroll/anchor/fans', data);
+}
+
+export function deleteAncFanApi(id: number) {
+  return request.delete(`/payroll/anchor/fans/${id}`);
+}
+
+export function listAncWeeksApi(data: { weekDate?: string; channelCode?: string }) {
+  return request.post<unknown, AncWeekResult>('/payroll/anchor/weeks/list', data);
+}
+
+export function settleAncWeekApi(data: { weekDate?: string; channelCode?: string }) {
+  return request.post<unknown, AncWeekResult>('/payroll/anchor/weeks/settle', data);
 }
 
 export function savePaySocialRuleApi(data: Pick<PaySocialRule, 'id' | 'baseMin' | 'baseMax' | 'remark' | 'items'>) {

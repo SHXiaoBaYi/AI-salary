@@ -22,6 +22,9 @@ public class PayEmployeeQueryDTO {
     @Schema(description = "1在职 0离职")
     private Integer jobStatus;
 
+    @Schema(description = "工作地：上海/新疆", example = "上海")
+    private String workPlace;
+
     @Schema(description = "页码", example = "1")
     private Integer pageNum;
 

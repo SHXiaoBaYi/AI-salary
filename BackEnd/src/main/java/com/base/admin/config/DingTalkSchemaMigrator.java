@@ -102,15 +102,17 @@ public class DingTalkSchemaMigrator implements ApplicationRunner {
                 UPDATE sys_menu
                 SET is_active = 0
                 WHERE is_active = 1
-                  AND menu_id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 140, 141, 142, 143, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
+                  AND menu_id NOT IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 140, 141, 142, 143, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 400, 401, 402, 410, 420)
                   AND component NOT IN (
                     'system/user/index', 'system/role/index', 'system/menu/index',
                     'system/ai-provider/index', 'system/dingtalk/index',
                     'payroll/employee/index', 'payroll/base/index', 'payroll/social/index',
                     'payroll/dept/index', 'payroll/post/index', 'payroll/fee/index',
-                    'payroll/attendance/index', 'payroll/bulletin/index', 'payroll/calendar/index', 'payroll/grade/index', 'payroll/performance/index', 'payroll/reward/index'
+                    'payroll/attendance/index', 'payroll/bulletin/index', 'payroll/calendar/index', 'payroll/grade/index', 'payroll/performance/index', 'payroll/reward/index',
+                    'anchor/host/index', 'anchor/sale/index', 'anchor/rate/index', 'anchor/channel/index', 'anchor/preview/index',
+                    'anchor/refund/index', 'anchor/schedule/index', 'anchor/fan/index', 'anchor/week/index'
                   )
-                  AND NOT (menu_type = 'F' AND parent_id IN (2, 3, 4, 140, 142, 201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 221, 223))
+                  AND NOT (menu_type = 'F' AND parent_id IN (2, 3, 4, 140, 142, 201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 221, 223, 301, 303, 306, 308, 310, 312, 314, 316))
                 """);
         if (retired > 0) {
             log.info("已停用 {} 条非保留菜单", retired);

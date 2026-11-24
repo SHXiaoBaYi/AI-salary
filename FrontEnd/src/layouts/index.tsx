@@ -12,7 +12,7 @@ import type { MenuTree } from '@/types/menu';
 import avatarPng from '@/assets/avatar.png';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import { ExternalLinkProvider } from '@/components/ExternalLinkDrawer';
-import { resolveMenuFullPath } from '@/utils/menuPath';
+import { firstMenuLeafPath, resolveMenuFullPath } from '@/utils/menuPath';
 import { withBase } from '@/utils/basePath';
 
 function convertMenusToRoute(menus: MenuTree[], parentPath = ''): any[] {
@@ -104,7 +104,7 @@ export default function BasicLayout() {
       logo={HeaderLogo}
       headerTitleRender={(logo, title) => (
         <div
-          onClick={() => navigate('/system/user')}
+          onClick={() => navigate(firstMenuLeafPath(menus) || '/')}
           className='flex cursor-pointer'
         >
           {logo}

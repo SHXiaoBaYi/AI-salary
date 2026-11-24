@@ -103,6 +103,9 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         ensureIndex("pay_employee", "idx_ding_user", "ALTER TABLE pay_employee ADD INDEX idx_ding_user (dingtalk_user_id)");
         ensureColumn("pay_employee", "hukou_type",
                 "ALTER TABLE pay_employee ADD COLUMN hukou_type VARCHAR(10) NOT NULL DEFAULT '' COMMENT '户口性质：城镇/农村' AFTER job_status");
+        ensureColumn("pay_employee", "work_place",
+                "ALTER TABLE pay_employee ADD COLUMN work_place VARCHAR(10) NOT NULL DEFAULT '' COMMENT '工作地：上海/新疆' AFTER job_status");
+        ensureIndex("pay_employee", "idx_work_place", "ALTER TABLE pay_employee ADD INDEX idx_work_place (work_place)");
         ensureColumn("pay_employee", "social_base",
                 "ALTER TABLE pay_employee ADD COLUMN social_base DECIMAL(12,2) NULL COMMENT '社保缴费基数' AFTER hukou_type");
         ensureColumn("pay_employee", "social_account",
@@ -124,30 +127,33 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         jdbc.update("""
                 INSERT INTO sys_menu (menu_id, menu_name, parent_id, sort_order, path, component, menu_type, perms, icon, visible, status, remark, is_active)
                 VALUES
-                (200, '算薪', 0, 2, '/payroll', '', 'M', '', 'AccountBookOutlined', 0, 0, '员工档案与算薪基础资料', 1),
-                (201, '员工管理', 200, 1, 'employee', 'payroll/employee/index', 'C', 'payroll:employee:list', 'TeamOutlined', 0, 0, '', 1),
+                (400, '高管', 0, 2, '/exec', '', 'M', '', 'CrownOutlined', 0, 0, '看工资明细和主播提成结果', 1),
+                (410, '财务助理', 0, 3, '/finance', '', 'M', '', 'WalletOutlined', 0, 0, '维护算薪资料、提成标准，并做周核算', 1),
+                (420, '运营助理', 0, 4, '/ops', '', 'M', '', 'VideoCameraOutlined', 0, 0, '维护主播、订单、退款、排班和粉丝', 1),
+                (401, '工资明细', 400, 1, 'exec/wage', 'payroll/employee/index', 'C', 'payroll:employee:list', 'PayCircleOutlined', 0, 0, '按当前筛选生成工资明细', 1),
+                (201, '员工管理', 410, 1, 'payroll/employee', 'payroll/employee/index', 'C', 'payroll:employee:list', 'TeamOutlined', 0, 0, '', 1),
                 (202, '员工编辑', 201, 1, '', '', 'F', 'payroll:employee:edit', '#', 0, 0, '', 1),
-                (207, '部门', 200, 2, 'dept', 'payroll/dept/index', 'C', 'payroll:base:list', 'BankOutlined', 0, 0, '维护部门', 1),
+                (207, '部门', 410, 2, 'payroll/dept', 'payroll/dept/index', 'C', 'payroll:base:list', 'BankOutlined', 0, 0, '维护部门', 1),
                 (208, '部门编辑', 207, 1, '', '', 'F', 'payroll:base:edit', '#', 0, 0, '', 1),
-                (209, '岗位', 200, 3, 'post', 'payroll/post/index', 'C', 'payroll:base:list', 'IdcardOutlined', 0, 0, '维护岗位', 1),
+                (209, '岗位', 410, 3, 'payroll/post', 'payroll/post/index', 'C', 'payroll:base:list', 'IdcardOutlined', 0, 0, '维护岗位', 1),
                 (210, '岗位编辑', 209, 1, '', '', 'F', 'payroll:base:edit', '#', 0, 0, '', 1),
-                (219, '职级', 200, 4, 'grade', 'payroll/grade/index', 'C', 'payroll:base:list', 'TrophyOutlined', 0, 0, '维护职级，事假扣款按职级配置', 1),
+                (219, '职级', 410, 4, 'payroll/grade', 'payroll/grade/index', 'C', 'payroll:base:list', 'TrophyOutlined', 0, 0, '维护职级，事假扣款按职级配置', 1),
                 (220, '职级编辑', 219, 1, '', '', 'F', 'payroll:base:edit', '#', 0, 0, '', 1),
-                (203, '职级规则', 200, 5, 'base', 'payroll/base/index', 'C', 'payroll:base:list', 'ProfileOutlined', 0, 0, '按职级配置事假扣款与通报奖惩单价', 1),
+                (203, '职级规则', 410, 5, 'payroll/base', 'payroll/base/index', 'C', 'payroll:base:list', 'ProfileOutlined', 0, 0, '按职级配置事假扣款与通报奖惩单价', 1),
                 (204, '职级规则编辑', 203, 1, '', '', 'F', 'payroll:base:edit', '#', 0, 0, '', 1),
-                (205, '社保缴纳规则', 200, 6, 'social', 'payroll/social/index', 'C', 'payroll:social:list', 'SafetyCertificateOutlined', 0, 0, '上海、新疆城镇与农村社保比例', 1),
+                (205, '社保缴纳规则', 410, 6, 'payroll/social', 'payroll/social/index', 'C', 'payroll:social:list', 'SafetyCertificateOutlined', 0, 0, '上海、新疆城镇与农村社保比例', 1),
                 (206, '社保规则编辑', 205, 1, '', '', 'F', 'payroll:social:edit', '#', 0, 0, '', 1),
-                (211, '额外费用', 200, 7, 'fee', 'payroll/fee/index', 'C', 'payroll:fee:list', 'MoneyCollectOutlined', 0, 0, '核算工资时维护员工额外费用', 1),
+                (211, '额外费用', 410, 7, 'payroll/fee', 'payroll/fee/index', 'C', 'payroll:fee:list', 'MoneyCollectOutlined', 0, 0, '核算工资时维护员工额外费用', 1),
                 (212, '额外费用编辑', 211, 1, '', '', 'F', 'payroll:fee:edit', '#', 0, 0, '', 1),
-                (221, '绩效考核', 200, 8, 'performance', 'payroll/performance/index', 'C', 'payroll:performance:list', 'FundOutlined', 0, 0, '按月维护员工绩效考核系数', 1),
+                (221, '绩效考核', 410, 8, 'payroll/performance', 'payroll/performance/index', 'C', 'payroll:performance:list', 'FundOutlined', 0, 0, '按月维护员工绩效考核系数', 1),
                 (222, '绩效考核编辑', 221, 1, '', '', 'F', 'payroll:performance:edit', '#', 0, 0, '', 1),
-                (213, '考勤记录', 200, 9, 'attendance', 'payroll/attendance/index', 'C', 'payroll:attendance:list', 'CalendarOutlined', 0, 0, '钉钉考勤，核算工资前同步', 1),
+                (213, '考勤记录', 410, 9, 'payroll/attendance', 'payroll/attendance/index', 'C', 'payroll:attendance:list', 'CalendarOutlined', 0, 0, '钉钉考勤，核算工资前同步', 1),
                 (214, '考勤同步', 213, 1, '', '', 'F', 'payroll:attendance:sync', '#', 0, 0, '', 1),
-                (215, '行政通报', 200, 10, 'bulletin', 'payroll/bulletin/index', 'C', 'payroll:bulletin:list', 'NotificationOutlined', 0, 0, '钉钉行政通报原文', 1),
+                (215, '行政通报', 410, 10, 'payroll/bulletin', 'payroll/bulletin/index', 'C', 'payroll:bulletin:list', 'NotificationOutlined', 0, 0, '钉钉行政通报原文', 1),
                 (216, '通报同步', 215, 1, '', '', 'F', 'payroll:bulletin:sync', '#', 0, 0, '', 1),
-                (223, '通报奖惩', 200, 11, 'reward', 'payroll/reward/index', 'C', 'payroll:reward:list', 'StarOutlined', 0, 0, '按月维护员工行政通报奖惩金额', 1),
+                (223, '通报奖惩', 410, 11, 'payroll/reward', 'payroll/reward/index', 'C', 'payroll:reward:list', 'StarOutlined', 0, 0, '按月维护员工行政通报奖惩金额', 1),
                 (224, '通报奖惩编辑', 223, 1, '', '', 'F', 'payroll:reward:edit', '#', 0, 0, '', 1),
-                (217, '计薪天数', 200, 12, 'calendar', 'payroll/calendar/index', 'C', 'payroll:calendar:list', 'ScheduleOutlined', 0, 0, '按国务院放假安排生成，可改休息出勤计薪', 1),
+                (217, '计薪天数', 410, 12, 'payroll/calendar', 'payroll/calendar/index', 'C', 'payroll:calendar:list', 'ScheduleOutlined', 0, 0, '按国务院放假安排生成，可改休息出勤计薪', 1),
                 (218, '计薪天数编辑', 217, 1, '', '', 'F', 'payroll:calendar:edit', '#', 0, 0, '', 1)
                 ON DUPLICATE KEY UPDATE
                   menu_name = VALUES(menu_name),
@@ -166,13 +172,13 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         // 发版被旧包冲掉后，菜单行可能还在但角色授权被关掉，强制给超管加回
         jdbc.update("""
                 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, is_active)
-                SELECT 1, menu_id, 1 FROM sys_menu WHERE menu_id IN (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
+                SELECT 1, menu_id, 1 FROM sys_menu WHERE menu_id IN (400, 410, 420, 401, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
                 """);
         jdbc.update("""
                 UPDATE sys_role_menu
                 SET is_active = 1
                 WHERE role_id = 1
-                  AND menu_id IN (200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
+                  AND menu_id IN (400, 410, 420, 401, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223, 224)
                 """);
         seedAnchorCommission();
         Integer menuCount = jdbc.queryForObject("""
@@ -744,6 +750,142 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                   KEY idx_anc_tier_channel (channel_id, tier_type)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播提成阶梯'
                 """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_anchor (
+                  id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  anchor_name      VARCHAR(50)  NOT NULL                COMMENT '主播姓名',
+                  douyin_id        VARCHAR(32)  NOT NULL                COMMENT '达人ID，订单归属键',
+                  douyin_nickname  VARCHAR(80)  NOT NULL DEFAULT ''     COMMENT '达人昵称',
+                  channel_code     VARCHAR(32)  NOT NULL                COMMENT 'hour/flagship',
+                  shop_name        VARCHAR(80)  NOT NULL DEFAULT ''     COMMENT '直播店铺',
+                  phone            VARCHAR(20)  NOT NULL DEFAULT ''     COMMENT '手机号',
+                  status           TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1停用',
+                  remark           VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+                  create_by        VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+                  create_time      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by        VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+                  update_time      DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active        TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_anchor_douyin (douyin_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播档案'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_sale_line (
+                  id                 BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  parent_order_no    VARCHAR(40)   NOT NULL                COMMENT '主订单编号',
+                  sub_order_no       VARCHAR(40)   NOT NULL                COMMENT '子订单编号',
+                  pay_time           DATETIME      NULL                    COMMENT '支付完成时间',
+                  product_name       VARCHAR(200)  NOT NULL                COMMENT '选购商品',
+                  spec               VARCHAR(200)  NOT NULL DEFAULT ''     COMMENT '商品规格',
+                  qty                DECIMAL(12,2) NOT NULL DEFAULT 1      COMMENT '商品数量',
+                  unit_price         DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '商品单价',
+                  payable            DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '订单应付金额',
+                  freight            DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '运费',
+                  refund_amount      DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '退商品金额',
+                  net_amount         DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '净销售额',
+                  order_status       VARCHAR(32)   NOT NULL DEFAULT ''     COMMENT '订单状态',
+                  talent_id          VARCHAR(32)   NOT NULL DEFAULT ''     COMMENT '达人ID',
+                  talent_name        VARCHAR(80)   NOT NULL DEFAULT ''     COMMENT '达人昵称',
+                  after_sale_status  VARCHAR(64)   NOT NULL DEFAULT ''     COMMENT '售后状态',
+                  traffic_type       VARCHAR(32)   NOT NULL DEFAULT '直播' COMMENT '流量体裁',
+                  anchor_id          BIGINT        NOT NULL DEFAULT 0      COMMENT '归属主播，0未归属',
+                  channel_code       VARCHAR(32)   NOT NULL DEFAULT ''     COMMENT '渠道',
+                  shop_name          VARCHAR(80)   NOT NULL DEFAULT ''     COMMENT '店铺',
+                  remark             VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '备注',
+                  create_by          VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+                  create_time        DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by          VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+                  update_time        DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active          TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_sale_sub (sub_order_no),
+                  KEY idx_anc_sale_pay (pay_time),
+                  KEY idx_anc_sale_anchor (anchor_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播销售明细'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_refund (
+                  id                   BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  after_sale_no        VARCHAR(40)   NOT NULL DEFAULT ''     COMMENT '售后单号',
+                  sub_order_no         VARCHAR(40)   NOT NULL                COMMENT '售后商品单号，对子订单',
+                  refund_goods_amount  DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '退商品金额',
+                  after_sale_status    VARCHAR(64)   NOT NULL DEFAULT ''     COMMENT '售后状态',
+                  product_name         VARCHAR(200)  NOT NULL DEFAULT ''     COMMENT '商品名称',
+                  refund_time          DATETIME      NULL                    COMMENT '退款完成时间',
+                  remark               VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '备注',
+                  create_by            VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+                  create_time          DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by            VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+                  update_time          DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active            TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_refund_sub (sub_order_no)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播售后退款'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_schedule (
+                  id                   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  anchor_id            BIGINT       NOT NULL                COMMENT '主播',
+                  channel_code         VARCHAR(32)  NOT NULL                COMMENT 'hour/flagship',
+                  live_start           DATETIME     NOT NULL                COMMENT '开播',
+                  live_end             DATETIME     NOT NULL                COMMENT '下播',
+                  summary_fan_count    INT          NULL                    COMMENT '新增粉丝汇总',
+                  confirmed_fan_count  INT          NULL                    COMMENT '核对人数',
+                  remark               VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+                  create_by            VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+                  create_time          DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by            VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+                  update_time          DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active            TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_schedule_live (live_start, live_end),
+                  KEY idx_anc_schedule_anchor (anchor_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播直播排班'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_fan (
+                  id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  douyin_no    VARCHAR(40)  NOT NULL                COMMENT '粉丝抖音号',
+                  nickname     VARCHAR(80)  NOT NULL DEFAULT ''     COMMENT '粉丝昵称',
+                  live_start   DATETIME     NOT NULL                COMMENT '直播开始时间',
+                  remark       VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+                  create_by    VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+                  create_time  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by    VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+                  update_time  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active    TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  KEY idx_anc_fan_live (live_start)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播新增粉丝'
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS anc_week_bill (
+                  id                  BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+                  week_start          DATE          NOT NULL                COMMENT '周起始日',
+                  week_end            DATE          NOT NULL                COMMENT '周结束日',
+                  channel_code        VARCHAR(32)   NOT NULL                COMMENT '渠道',
+                  anchor_id           BIGINT        NOT NULL                COMMENT '主播',
+                  order_count         INT           NOT NULL DEFAULT 0      COMMENT '计入订单数',
+                  product_commission  DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '单品提成',
+                  week_net_gmv        DECIMAL(14,2) NOT NULL DEFAULT 0      COMMENT '周净销售额',
+                  extra_commission    DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '额外提成',
+                  fan_raw_count       INT           NOT NULL DEFAULT 0      COMMENT '粉丝明细人数',
+                  fan_summary_count   INT           NULL                    COMMENT '粉丝汇总人数',
+                  fan_count           INT           NOT NULL DEFAULT 0      COMMENT '计提粉丝人数',
+                  fan_mismatch        TINYINT       NOT NULL DEFAULT 0      COMMENT '1汇总与明细不一致',
+                  fan_commission      DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '粉丝提成',
+                  total_amount        DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '合计',
+                  remark              VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '说明',
+                  create_by           VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+                  create_time         DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  update_by           VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+                  update_time         DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  is_active           TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_anc_week_bill (week_start, channel_code, anchor_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播周提成'
+                """);
         Integer productCount = jdbc.queryForObject("SELECT COUNT(1) FROM anc_product_rate", Integer.class);
         if (productCount == null || productCount == 0) {
             for (String[] row : ANCHOR_PRODUCTS) {
@@ -768,12 +910,24 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
         jdbc.update("""
                 INSERT INTO sys_menu (menu_id, menu_name, parent_id, sort_order, path, component, menu_type, perms, icon, visible, status, remark, is_active)
                 VALUES
-                (300, '主播提成', 0, 4, '/anchor', '', 'M', '', 'VideoCameraOutlined', 0, 0, '直播提成标准与试算', 1),
-                (301, '单品标准', 300, 1, 'rate', 'anchor/rate/index', 'C', 'payroll:anchor:list', 'TagsOutlined', 0, 0, '精品、冷鲜、组合、熟食、果蔬', 1),
+                (402, '主播周提成', 400, 2, 'exec/week', 'anchor/week/index', 'C', 'payroll:anchor:list', 'AccountBookOutlined', 0, 0, '查看已核算结果', 1),
+                (305, '主播提成试算', 400, 3, 'anchor/preview', 'anchor/preview/index', 'C', 'payroll:anchor:list', 'AuditOutlined', 0, 0, '原表口径和补齐后的试算', 1),
+                (301, '主播单品标准', 410, 13, 'anchor/rate', 'anchor/rate/index', 'C', 'payroll:anchor:list', 'TagsOutlined', 0, 0, '精品、冷鲜、组合、熟食、果蔬', 1),
                 (302, '单品标准编辑', 301, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
-                (303, '渠道阶梯', 300, 2, 'channel', 'anchor/channel/index', 'C', 'payroll:anchor:list', 'FundOutlined', 0, 0, '小时达与旗舰店的周业绩、粉丝阶梯', 1),
+                (303, '主播渠道阶梯', 410, 14, 'anchor/channel', 'anchor/channel/index', 'C', 'payroll:anchor:list', 'FundOutlined', 0, 0, '小时达与旗舰店的周业绩、粉丝阶梯', 1),
                 (304, '渠道阶梯编辑', 303, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
-                (305, '核算试算', 300, 3, 'preview', 'anchor/preview/index', 'C', 'payroll:anchor:list', 'AuditOutlined', 0, 0, '原表口径和补齐后的试算', 1)
+                (316, '主播周核算', 410, 15, 'anchor/week', 'anchor/week/index', 'C', 'payroll:anchor:list', 'AccountBookOutlined', 0, 0, '一键按周六至周五核算', 1),
+                (317, '周核算执行', 316, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (306, '主播管理', 420, 1, 'anchor/host', 'anchor/host/index', 'C', 'payroll:anchor:list', 'TeamOutlined', 0, 0, '达人ID与渠道', 1),
+                (307, '主播编辑', 306, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (308, '销售明细', 420, 2, 'anchor/sale', 'anchor/sale/index', 'C', 'payroll:anchor:list', 'ShoppingCartOutlined', 0, 0, '抖店直播子订单', 1),
+                (309, '销售明细编辑', 308, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (310, '售后退款', 420, 3, 'anchor/refund', 'anchor/refund/index', 'C', 'payroll:anchor:list', 'MoneyCollectOutlined', 0, 0, '同意退款才进入净销售额', 1),
+                (311, '售后退款编辑', 310, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (312, '直播排班', 420, 4, 'anchor/schedule', 'anchor/schedule/index', 'C', 'payroll:anchor:list', 'ScheduleOutlined', 0, 0, '开播下播，空达人ID按时间归属', 1),
+                (313, '直播排班编辑', 312, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1),
+                (314, '新增粉丝', 420, 5, 'anchor/fan', 'anchor/fan/index', 'C', 'payroll:anchor:list', 'UserAddOutlined', 0, 0, '剔除 49136593613', 1),
+                (315, '新增粉丝编辑', 314, 1, '', '', 'F', 'payroll:anchor:edit', '#', 0, 0, '', 1)
                 ON DUPLICATE KEY UPDATE
                   menu_name = VALUES(menu_name),
                   parent_id = VALUES(parent_id),
@@ -790,13 +944,50 @@ public class PayrollSchemaMigrator implements ApplicationRunner {
                 """);
         jdbc.update("""
                 INSERT IGNORE INTO sys_role_menu (role_id, menu_id, is_active)
-                SELECT 1, menu_id, 1 FROM sys_menu WHERE menu_id BETWEEN 300 AND 305
+                SELECT 1, menu_id, 1 FROM sys_menu WHERE menu_id BETWEEN 301 AND 317 OR menu_id = 402
                 """);
         jdbc.update("""
                 UPDATE sys_role_menu SET is_active = 1
-                WHERE role_id = 1 AND menu_id BETWEEN 300 AND 305
+                WHERE role_id = 1 AND (menu_id BETWEEN 301 AND 317 OR menu_id = 402)
                 """);
+        jdbc.update("UPDATE sys_menu SET is_active = 0 WHERE menu_id IN (200, 300)");
+        seedWorkRoles();
         log.info("主播提成标准、渠道阶梯与菜单已同步");
+    }
+
+    /** 高管、财务助理、运营助理各看自己的菜单。重启会把这三套授权补回。 */
+    private void seedWorkRoles() {
+        insertRoleIfAbsent("高管", "exec", 3, "看工资明细、主播周提成和提成口径");
+        insertRoleIfAbsent("财务助理", "finance_assistant", 4, "维护算薪资料、提成标准，并执行周核算");
+        insertRoleIfAbsent("运营助理", "ops_assistant", 5, "维护主播档案、订单、退款、排班和粉丝");
+        grantRoleMenus("exec", "400,401,402,305");
+        grantRoleMenus("finance_assistant",
+                "410,201,202,207,208,209,210,219,220,203,204,205,206,211,212,221,222,213,214,215,216,223,224,217,218,301,302,303,304,316,317");
+        grantRoleMenus("ops_assistant", "420,306,307,308,309,310,311,312,313,314,315");
+    }
+
+    private void insertRoleIfAbsent(String roleName, String roleKey, int sortOrder, String remark) {
+        jdbc.update("""
+                INSERT INTO sys_role (role_name, role_key, sort_order, status, remark, create_by, is_active)
+                SELECT ?, ?, ?, 0, ?, 'system', 1
+                WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = ?)
+                """, roleName, roleKey, sortOrder, remark, roleKey);
+    }
+
+    private void grantRoleMenus(String roleKey, String menuIds) {
+        jdbc.update("""
+                INSERT IGNORE INTO sys_role_menu (role_id, menu_id, is_active)
+                SELECT r.role_id, m.menu_id, 1
+                FROM sys_role r
+                JOIN sys_menu m ON FIND_IN_SET(m.menu_id, ?)
+                WHERE r.role_key = ?
+                """, menuIds, roleKey);
+        jdbc.update("""
+                UPDATE sys_role_menu rm
+                JOIN sys_role r ON r.role_id = rm.role_id
+                SET rm.is_active = 1
+                WHERE r.role_key = ? AND FIND_IN_SET(rm.menu_id, ?)
+                """, roleKey, menuIds);
     }
 
     private void seedAnchorChannel(String code, String name, int weekStart, String from, String remark, int sort,

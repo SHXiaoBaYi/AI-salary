@@ -340,6 +340,7 @@ CREATE TABLE IF NOT EXISTS pay_employee (
   bank_account        VARCHAR(40)   NOT NULL DEFAULT ''     COMMENT '银行卡号',
   bank_name           VARCHAR(80)   NOT NULL DEFAULT ''     COMMENT '开户行',
   job_status          TINYINT       NOT NULL DEFAULT 1      COMMENT '1在职 0离职',
+  work_place          VARCHAR(10)   NOT NULL DEFAULT ''     COMMENT '工作地：上海/新疆',
   hukou_type          VARCHAR(10)   NOT NULL DEFAULT ''     COMMENT '户口性质：城镇/农村',
   social_base         DECIMAL(12,2) NULL                    COMMENT '社保缴费基数',
   social_account      VARCHAR(40)   NOT NULL DEFAULT ''     COMMENT '个人社保账号',
@@ -353,6 +354,7 @@ CREATE TABLE IF NOT EXISTS pay_employee (
   KEY idx_dept (dept_id),
   KEY idx_post (post_id),
   KEY idx_grade (grade_id),
+  KEY idx_work_place (work_place),
   KEY idx_ding_user (dingtalk_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='算薪员工';
 
@@ -600,3 +602,133 @@ CREATE TABLE IF NOT EXISTS anc_tier (
   PRIMARY KEY (id),
   KEY idx_anc_tier_channel (channel_id, tier_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播提成阶梯';
+
+CREATE TABLE IF NOT EXISTS anc_anchor (
+  id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  anchor_name      VARCHAR(50)  NOT NULL                COMMENT '主播姓名',
+  douyin_id        VARCHAR(32)  NOT NULL                COMMENT '达人ID，订单归属键',
+  douyin_nickname  VARCHAR(80)  NOT NULL DEFAULT ''     COMMENT '达人昵称',
+  channel_code     VARCHAR(32)  NOT NULL                COMMENT 'hour/flagship',
+  shop_name        VARCHAR(80)  NOT NULL DEFAULT ''     COMMENT '直播店铺',
+  phone            VARCHAR(20)  NOT NULL DEFAULT ''     COMMENT '手机号',
+  status           TINYINT      NOT NULL DEFAULT 0      COMMENT '0正常 1停用',
+  remark           VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+  create_by        VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+  create_time      DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by        VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+  update_time      DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active        TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_anchor_douyin (douyin_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播档案';
+
+CREATE TABLE IF NOT EXISTS anc_sale_line (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+  parent_order_no    VARCHAR(40)   NOT NULL                COMMENT '主订单编号',
+  sub_order_no       VARCHAR(40)   NOT NULL                COMMENT '子订单编号',
+  pay_time           DATETIME      NULL                    COMMENT '支付完成时间',
+  product_name       VARCHAR(200)  NOT NULL                COMMENT '选购商品',
+  spec               VARCHAR(200)  NOT NULL DEFAULT ''     COMMENT '商品规格',
+  qty                DECIMAL(12,2) NOT NULL DEFAULT 1      COMMENT '商品数量',
+  unit_price         DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '商品单价',
+  payable            DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '订单应付金额',
+  freight            DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '运费',
+  refund_amount      DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '退商品金额',
+  net_amount         DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '净销售额',
+  order_status       VARCHAR(32)   NOT NULL DEFAULT ''     COMMENT '订单状态',
+  talent_id          VARCHAR(32)   NOT NULL DEFAULT ''     COMMENT '达人ID',
+  talent_name        VARCHAR(80)   NOT NULL DEFAULT ''     COMMENT '达人昵称',
+  after_sale_status  VARCHAR(64)   NOT NULL DEFAULT ''     COMMENT '售后状态',
+  traffic_type       VARCHAR(32)   NOT NULL DEFAULT '直播' COMMENT '流量体裁',
+  anchor_id          BIGINT        NOT NULL DEFAULT 0      COMMENT '归属主播，0未归属',
+  channel_code       VARCHAR(32)   NOT NULL DEFAULT ''     COMMENT '渠道',
+  shop_name          VARCHAR(80)   NOT NULL DEFAULT ''     COMMENT '店铺',
+  remark             VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '备注',
+  create_by          VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+  create_time        DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+  update_time        DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active          TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_sale_sub (sub_order_no),
+  KEY idx_anc_sale_pay (pay_time),
+  KEY idx_anc_sale_anchor (anchor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播销售明细';
+
+CREATE TABLE IF NOT EXISTS anc_refund (
+  id                   BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+  after_sale_no        VARCHAR(40)   NOT NULL DEFAULT ''     COMMENT '售后单号',
+  sub_order_no         VARCHAR(40)   NOT NULL                COMMENT '售后商品单号，对子订单',
+  refund_goods_amount  DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '退商品金额',
+  after_sale_status    VARCHAR(64)   NOT NULL DEFAULT ''     COMMENT '售后状态',
+  product_name         VARCHAR(200)  NOT NULL DEFAULT ''     COMMENT '商品名称',
+  refund_time          DATETIME      NULL                    COMMENT '退款完成时间',
+  remark               VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '备注',
+  create_by            VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+  create_time          DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by            VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+  update_time          DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active            TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_refund_sub (sub_order_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播售后退款';
+
+CREATE TABLE IF NOT EXISTS anc_schedule (
+  id                   BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  anchor_id            BIGINT       NOT NULL                COMMENT '主播',
+  channel_code         VARCHAR(32)  NOT NULL                COMMENT 'hour/flagship',
+  live_start           DATETIME     NOT NULL                COMMENT '开播',
+  live_end             DATETIME     NOT NULL                COMMENT '下播',
+  summary_fan_count    INT          NULL                    COMMENT '新增粉丝汇总',
+  confirmed_fan_count  INT          NULL                    COMMENT '核对人数',
+  remark               VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+  create_by            VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+  create_time          DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by            VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+  update_time          DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active            TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_schedule_live (live_start, live_end),
+  KEY idx_anc_schedule_anchor (anchor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播直播排班';
+
+CREATE TABLE IF NOT EXISTS anc_fan (
+  id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  douyin_no    VARCHAR(40)  NOT NULL                COMMENT '粉丝抖音号',
+  nickname     VARCHAR(80)  NOT NULL DEFAULT ''     COMMENT '粉丝昵称',
+  live_start   DATETIME     NOT NULL                COMMENT '直播开始时间',
+  remark       VARCHAR(500) NOT NULL DEFAULT ''     COMMENT '备注',
+  create_by    VARCHAR(50)  DEFAULT ''              COMMENT '创建者',
+  create_time  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by    VARCHAR(50)  DEFAULT ''              COMMENT '更新者',
+  update_time  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active    TINYINT      NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  KEY idx_anc_fan_live (live_start)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播新增粉丝';
+
+CREATE TABLE IF NOT EXISTS anc_week_bill (
+  id                  BIGINT        NOT NULL AUTO_INCREMENT COMMENT '主键',
+  week_start          DATE          NOT NULL                COMMENT '周起始日',
+  week_end            DATE          NOT NULL                COMMENT '周结束日',
+  channel_code        VARCHAR(32)   NOT NULL                COMMENT '渠道',
+  anchor_id           BIGINT        NOT NULL                COMMENT '主播',
+  order_count         INT           NOT NULL DEFAULT 0      COMMENT '计入订单数',
+  product_commission  DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '单品提成',
+  week_net_gmv        DECIMAL(14,2) NOT NULL DEFAULT 0      COMMENT '周净销售额',
+  extra_commission    DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '额外提成',
+  fan_raw_count       INT           NOT NULL DEFAULT 0      COMMENT '粉丝明细人数',
+  fan_summary_count   INT           NULL                    COMMENT '粉丝汇总人数',
+  fan_count           INT           NOT NULL DEFAULT 0      COMMENT '计提粉丝人数',
+  fan_mismatch        TINYINT       NOT NULL DEFAULT 0      COMMENT '1汇总与明细不一致',
+  fan_commission      DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '粉丝提成',
+  total_amount        DECIMAL(12,2) NOT NULL DEFAULT 0      COMMENT '合计',
+  remark              VARCHAR(500)  NOT NULL DEFAULT ''     COMMENT '说明',
+  create_by           VARCHAR(50)   DEFAULT ''              COMMENT '创建者',
+  create_time         DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by           VARCHAR(50)   DEFAULT ''              COMMENT '更新者',
+  update_time         DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  is_active           TINYINT       NOT NULL DEFAULT 1      COMMENT '1有效 0删除',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_anc_week_bill (week_start, channel_code, anchor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='主播周提成';

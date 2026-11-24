@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { ActionType, ProColumnType } from '@ant-design/pro-components';
 import { App, DatePicker, Form, Input, InputNumber, Modal, Progress, Select, Tag } from 'antd';
 import dayjs from 'dayjs';
@@ -23,7 +24,13 @@ import {
   type PayGrade,
   type PayPost,
   type PayWageExportJob,
+  type PayWageExportStart,
 } from '@/api/payroll';
+
+const WORK_PLACE_OPTIONS = [
+  { value: '上海', label: '上海' },
+  { value: '新疆', label: '新疆' },
+];
 
 const SALARY_ITEMS: { name: keyof PayEmployee; label: string }[] = [
   { name: 'amtPost', label: '岗位工资' },
@@ -41,8 +48,30 @@ const ZERO_SALARY = Object.fromEntries(SALARY_ITEMS.map((item) => [item.name, 0]
   number
 >;
 
+type WageListFilter = Omit<PayWageExportStart, 'period'>;
+
+function optionalNumber(value: unknown) {
+  if (value === '' || value === undefined || value === null) return undefined;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function pickWageFilter(query: Record<string, unknown>): WageListFilter {
+  const employeeName = typeof query.employeeName === 'string' ? query.employeeName.trim() : '';
+  const workPlace = typeof query.workPlace === 'string' ? query.workPlace.trim() : '';
+  return {
+    employeeName: employeeName || undefined,
+    deptId: optionalNumber(query.deptId),
+    postId: optionalNumber(query.postId),
+    gradeId: optionalNumber(query.gradeId),
+    jobStatus: optionalNumber(query.jobStatus),
+    workPlace: workPlace || undefined,
+  };
+}
+
 const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   const { message, modal } = App.useApp();
+  const wageView = useLocation().pathname.replace(/\/$/, '').endsWith('/exec/wage');
   const actionRef = useRef<ActionType>(null);
   const [depts, setDepts] = useState<PayDept[]>([]);
   const [posts, setPosts] = useState<PayPost[]>([]);
@@ -53,6 +82,8 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
   const [syncing, setSyncing] = useState(false);
   const [wageOpen, setWageOpen] = useState(false);
   const [wageMonth, setWageMonth] = useState<Dayjs>(() => dayjs().subtract(1, 'month'));
+  const [wageFilter, setWageFilter] = useState<WageListFilter>({});
+  const listFilterRef = useRef<WageListFilter>({});
   const [wageJob, setWageJob] = useState<PayWageExportJob | null>(null);
   const [wageStarting, setWageStarting] = useState(false);
   const [wageDownloading, setWageDownloading] = useState(false);
@@ -93,8 +124,9 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
             ...row,
             hireDate: row.hireDate ? dayjs(row.hireDate) : undefined,
             jobStatus: row.jobStatus === 1,
+            workPlace: row.workPlace || undefined,
           }
-        : { jobStatus: true, ...ZERO_SALARY },
+        : { jobStatus: true, workPlace: '上海', ...ZERO_SALARY },
     );
     setOpen(true);
   };
@@ -125,8 +157,29 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
     stopWagePoll();
     setWageJob(null);
     setWageMonth(dayjs().subtract(1, 'month'));
+    setWageFilter(listFilterRef.current);
     setWageOpen(true);
   };
+
+  const wageFilterText = (() => {
+    const parts: string[] = [];
+    if (wageFilter.employeeName) parts.push(`姓名「${wageFilter.employeeName}」`);
+    if (wageFilter.deptId != null) {
+      parts.push(`部门「${depts.find((item) => item.id === wageFilter.deptId)?.deptName || wageFilter.deptId}」`);
+    }
+    if (wageFilter.postId != null) {
+      parts.push(`岗位「${posts.find((item) => item.id === wageFilter.postId)?.postName || wageFilter.postId}」`);
+    }
+    if (wageFilter.gradeId === 0) {
+      parts.push('未设职级');
+    } else if (wageFilter.gradeId != null) {
+      parts.push(`职级「${grades.find((item) => item.id === wageFilter.gradeId)?.gradeName || wageFilter.gradeId}」`);
+    }
+    if (wageFilter.workPlace) parts.push(`工作地「${wageFilter.workPlace}」`);
+    if (wageFilter.jobStatus === 1) parts.push('在职');
+    else if (wageFilter.jobStatus === 0) parts.push('离职');
+    return parts.length ? parts.join('，') : '未筛选，按当前表格全部员工';
+  })();
 
   const startWageExport = async () => {
     if (!wageMonth) {
@@ -137,7 +190,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
     setWageStarting(true);
     stopWagePoll();
     try {
-      const job = await startPayWageExportApi(period);
+      const job = await startPayWageExportApi({ period, ...wageFilter });
       setWageJob(job);
       wagePollRef.current = window.setInterval(() => {
         void (async () => {
@@ -201,6 +254,7 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         bankAccount: values.bankAccount,
         bankName: values.bankName,
         jobStatus: values.jobStatus ? 1 : 0,
+        workPlace: values.workPlace,
         hukouType: values.hukouType || '',
         socialBase: values.socialBase ?? null,
         socialAccount: values.socialAccount,
@@ -269,6 +323,17 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
       },
       render: (_, row) => (row.gradeName ? row.gradeName : <Tag color='warning'>未设</Tag>),
     },
+    {
+      title: '工作地',
+      dataIndex: 'workPlace',
+      width: 100,
+      valueType: 'select',
+      fieldProps: {
+        allowClear: true,
+        options: WORK_PLACE_OPTIONS,
+      },
+      render: (_, row) => row.workPlace || <Tag color='warning'>未设</Tag>,
+    },
     { title: '入职时间', dataIndex: 'hireDate', width: 120, search: false },
     {
       title: '底薪合计',
@@ -316,12 +381,12 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
       <BaseProTable<PayEmployee>
         rowKey='id'
         actionRef={actionRef}
-        headerTitle='员工管理'
+        headerTitle={wageView ? '工资明细' : '员工管理'}
         columns={columns}
-        scroll={{ x: 2220 }}
+        scroll={{ x: 2320 }}
         tableExtraRender={() => (
           <div className='mb-3 text-sm text-neutral-500'>
-            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。
+            底薪由岗位工资、全勤工资、社会保险补贴、公积金补贴、交通通讯补助、竞业费、洗理费、固定加班费构成，合计即工资标准。钉钉同步不会覆盖底薪构成与职级。生成工资明细按表格当前筛选结果导出。
           </div>
         )}
         toolBarRender={() => [
@@ -350,7 +415,9 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
           </PermissionButton>,
         ]}
         request={async (params) => {
-          const { rows, total } = await getPayEmployeeListApi(tools.handleSearchParams(params));
+          const query = tools.handleSearchParams(params);
+          listFilterRef.current = pickWageFilter(query);
+          const { rows, total } = await getPayEmployeeListApi(query);
           return { data: rows, total, success: true };
         }}
       />
@@ -366,9 +433,10 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
         destroyOnHidden
       >
         <p className='mb-3 text-sm text-neutral-500'>
-          按模版「工资」表生成在职员工工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。数据较多时显示进度，完成后可下载
+          按员工表当前筛选结果生成工资明细：底薪构成、考勤、通报、绩效、额外费用；社保/公积金按缴费基数匹配缴纳规则计算个人扣款；个税一期取额外费用「个税」类目。完成后可下载
           Excel。
         </p>
+        <p className='mb-3 text-sm text-neutral-700'>当前筛选：{wageFilterText}</p>
         <div className='mb-4 flex flex-wrap items-center gap-3'>
           <span>算薪月份</span>
           <DatePicker
@@ -471,6 +539,16 @@ const PayrollEmployeePage = memo(function PayrollEmployeePage() {
             rules={[{ required: true, message: '请选择入职时间' }]}
           >
             <DatePicker className='w-full!' />
+          </Form.Item>
+          <Form.Item
+            name='workPlace'
+            label='工作地'
+            rules={[{ required: true, message: '请选择工作地' }]}
+          >
+            <Select
+              options={WORK_PLACE_OPTIONS}
+              placeholder='上海 / 新疆'
+            />
           </Form.Item>
 
           <div className='col-span-2 mb-1 text-sm font-medium text-neutral-700'>底薪构成</div>
